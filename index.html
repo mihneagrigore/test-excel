@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Excel – Medii și absențe</title>
+<style>
+:root{
+  --green:#217346; --green-d:#185c37; --green-l:#e6f2ea;
+  --ink:#1f2328; --muted:#5f6670; --line:#d7dbe0; --grid:#dcdfe3; --bg:#eef0f2;
+  --ok:#1a7f45; --bad:#c62828; --warn:#b26a00;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);color-scheme:light}
+#app{height:100%;display:flex;flex-direction:column}
+button{font:inherit;color:inherit}
+
+/* ---------- bara de sus ---------- */
+.topbar{background:var(--green);color:#fff;display:flex;align-items:center;gap:12px;padding:0 14px;height:46px;flex:none}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand svg{flex:none}
+.sp{flex:1}
+.chip{background:rgba(255,255,255,.17);padding:3px 11px;border-radius:999px;font-size:13px;white-space:nowrap}
+.chip.warn{background:#ffe08a;color:#5b3b00}
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:6px;padding:7px 14px;cursor:pointer;font-weight:600}
+.btn:hover{background:#f3f4f6}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.btn.primary:hover{background:var(--green-d)}
+.btn.light{background:#fff;color:var(--green-d);border-color:#fff}
+.btn.light:hover{background:#e9f4ee}
+.btn.small{padding:4px 11px;font-size:13px}
+
+.main{flex:1;display:flex;min-height:0}
+.sheetpane{flex:1;min-width:0;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--line)}
+
+/* ---------- bara de instrumente ---------- */
+.toolbar{display:flex;align-items:center;gap:2px;padding:6px 8px;background:#f8f9fa;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
+.tb{height:30px;min-width:30px;padding:0 8px;border:1px solid transparent;background:transparent;border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;color:#2b2f33;white-space:nowrap}
+.tb:hover{background:#e6e8eb}
+.tb.on{background:#cfe8d8;border-color:#9fcdb0}
+.tb:disabled{opacity:.4;cursor:default}
+.tb .cbar{display:block;height:3px;border-radius:1px;margin-top:1px}
+.tb .stack{display:flex;flex-direction:column;align-items:center;line-height:1}
+.tb small{font-size:10px}
+.sep{width:1px;height:22px;background:var(--line);margin:0 6px;flex:none}
+.sel-fmt{height:30px;border:1px solid var(--line);border-radius:4px;background:#fff;padding:0 6px;font:inherit}
+
+.fxrow{display:flex;align-items:center;border-bottom:1px solid var(--line);flex:none;background:#fff}
+#nameBox{width:96px;border:0;border-right:1px solid var(--line);padding:5px 8px;text-align:center;font:inherit;background:#fff;outline:none;color:#222}
+.fxl{padding:0 11px;color:#777;font-style:italic;font-family:Georgia,serif;border-right:1px solid var(--line)}
+#fx{flex:1;min-width:0;border:0;padding:5px 9px;font:15px Calibri,"Segoe UI",Arial,sans-serif;outline:none}
+
+/* ---------- grila ---------- */
+.gridscroll{flex:1;overflow:auto;position:relative;background:#fff;min-height:0}
+#gridInner{position:relative;width:max-content}
+#grid{border-collapse:separate;border-spacing:0;table-layout:fixed;font-family:Calibri,"Segoe UI",Arial,sans-serif;font-size:15px;margin:0}
+#grid th{background:#f1f3f4;color:#555;font-weight:500;font-size:12px;border-right:1px solid #cfd3d7;border-bottom:1px solid #cfd3d7;height:24px;padding:0;position:sticky;top:0;z-index:5;user-select:none;text-align:center;cursor:pointer}
+#grid th.rh{left:0;top:auto;z-index:4;width:46px}
+#grid th.corner{left:0;top:0;z-index:6}
+#grid th.sel{background:#d3e9dc;color:#13492b;font-weight:600}
+#grid th .rs{position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize}
+#grid td{height:24px;padding:0 5px;border-right:1px solid var(--grid);border-bottom:1px solid var(--grid);white-space:nowrap;overflow:hidden;cursor:cell;background:#fff;user-select:none}
+#selBox{position:absolute;border:2px solid var(--green);pointer-events:none;z-index:3;background:rgba(33,115,70,.09)}
+#selBox.single{background:transparent}
+#fillHandle{position:absolute;width:8px;height:8px;background:var(--green);border:1px solid #fff;z-index:4;cursor:crosshair}
+#fillBox{position:absolute;border:1px dashed #222;pointer-events:none;z-index:3}
+#clipBox{position:absolute;border:2px dashed var(--green);pointer-events:none;z-index:3}
+#cellEditor{position:absolute;z-index:4;opacity:0;pointer-events:none;border:2px solid var(--green);background:#fff;font:15px Calibri,"Segoe UI",Arial,sans-serif;padding:0 4px;outline:none;margin:0;color:#000}
+#cellEditor.on{opacity:1;pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+
+.statusbar{display:flex;align-items:center;gap:14px;padding:0 10px;height:30px;background:#f3f4f6;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);flex:none}
+.statusbar .tab{background:#fff;border:1px solid var(--line);border-bottom:2px solid var(--green);padding:3px 18px;font-weight:600;color:var(--green-d);border-radius:3px 3px 0 0}
+
+/* ---------- panou cerințe ---------- */
+.tasks{width:392px;flex:none;overflow-y:auto;background:#f8f9fa;padding:14px 14px 28px}
+.tasks h2{font-size:17px;margin:0}
+.tpHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.sumbox{font-size:12.5px;color:var(--muted);text-align:right}
+.lead{margin:6px 0 12px;color:#3c4248}
+.task{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-bottom:11px}
+.task header{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.task .num{flex:none;width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+.task h3{margin:0;font-size:14.5px;flex:1}
+.task .pts{font-size:12px;color:var(--muted);background:#f1f3f4;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.task .desc{color:#2f353b;font-size:13.5px}
+.task .desc ul{margin:5px 0 0;padding-left:18px}
+.task .foot{display:flex;align-items:center;gap:10px;margin-top:10px}
+.status{font-size:12.5px;font-weight:600;color:var(--muted)}
+.status.ok{color:var(--ok)} .status.mid{color:var(--warn)} .status.bad{color:var(--bad)}
+.crit{list-style:none;margin:9px 0 0;padding:0;font-size:12.8px}
+.crit li{display:flex;gap:8px;padding:5px 0;border-top:1px solid #eef0f2}
+.crit .ic{flex:none;width:18px;text-align:center;font-weight:700}
+.crit .ic.ok{color:var(--ok)} .crit .ic.mid{color:var(--warn)} .crit .ic.bad{color:var(--bad)}
+.crit .tx{flex:1}
+.crit .note{color:var(--muted);font-size:12px;margin-top:1px}
+.crit .pp{flex:none;color:var(--muted);font-variant-numeric:tabular-nums}
+.tips{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:13px;margin-top:4px}
+.tips summary{cursor:pointer;font-weight:600}
+.tips ul{margin:7px 0 0;padding-left:18px}
+.tips li{margin:2px 0}
+kbd{background:#f1f3f4;border:1px solid #d3d7db;border-bottom-width:2px;border-radius:4px;padding:0 5px;font:12px Consolas,monospace}
+
+/* ---------- popover / toast / modal ---------- */
+#pop{position:fixed;z-index:50;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:6px;display:none;min-width:150px}
+#pop .sw-grid{display:grid;grid-template-columns:repeat(7,24px);gap:5px;padding:4px}
+#pop .sw{width:24px;height:24px;border-radius:4px;border:1px solid rgba(0,0,0,.2);cursor:pointer;padding:0}
+#pop .sw:hover{outline:2px solid var(--green)}
+#pop .mi{display:block;width:100%;text-align:left;background:transparent;border:0;padding:7px 12px;border-radius:5px;cursor:pointer;white-space:nowrap}
+#pop .mi:hover{background:#eef3f0}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#263238;color:#fff;padding:9px 16px;border-radius:8px;z-index:80;font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+#toast.on{opacity:1}
+.backdrop{position:fixed;inset:0;background:rgba(20,28,24,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+.box{background:#fff;border-radius:14px;max-width:640px;width:100%;max-height:92vh;overflow:auto;padding:24px 26px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.box h2{margin:0 0 2px;font-size:21px}
+.box .sub{margin:0 0 14px;color:var(--muted)}
+.box label{display:block;font-weight:600;margin:10px 0 3px;font-size:13px}
+.box input{width:100%;padding:9px 11px;border:1px solid #c5cad0;border-radius:7px;font:inherit}
+.box input:focus{outline:2px solid var(--green);border-color:var(--green)}
+.box ul.info{margin:14px 0;padding-left:20px;color:#333}
+.box .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.err{color:var(--bad);font-size:13px;margin-top:6px;min-height:18px}
+.scorecard{display:flex;align-items:center;gap:16px;background:var(--green-l);border-radius:12px;padding:12px 18px;margin:12px 0}
+.scorecard .grade{font-size:44px;font-weight:700;color:var(--green-d);line-height:1}
+.meta{color:var(--muted);margin:0}
+table.rt{width:100%;border-collapse:collapse;font-size:13.5px}
+table.rt td{padding:6px 4px;border-bottom:1px solid #eceef0;vertical-align:top}
+table.rt td:last-child{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.rt tr.th td{font-weight:700;background:#f6f8f7;padding-top:9px}
+table.rt tr.cr td:first-child{padding-left:12px}
+table.rt .note{color:var(--muted);font-size:12px}
+table.rt .ic{display:inline-block;width:16px;font-weight:700}
+.ic.ok{color:var(--ok)} .ic.mid{color:var(--warn)} .ic.bad{color:var(--bad)}
+#printArea{display:none}
+
+@media (max-width:980px){
+  .main{flex-direction:column;overflow-y:auto}
+  .sheetpane{flex:none;height:72vh;border-right:0}
+  .tasks{width:auto;overflow:visible}
+}
+@media print{
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important;padding:0}
+  #printArea .scorecard{border:1px solid #999;background:#fff}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="1" y="1" width="20" height="20" rx="3" fill="#fff"/><path d="M6 6l10 10M16 6L6 16" stroke="#217346" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <span id="ttl"></span>
+    </div>
+    <span class="sp"></span>
+    <span class="chip" id="chipName" hidden></span>
+    <span class="chip" id="chipTimer" hidden>⏱ <b id="timerTxt">00:00</b></span>
+    <button class="btn light" id="btnFinish" disabled>Finalizează testul</button>
+  </header>
+
+  <div class="main">
+    <section class="sheetpane">
+      <div class="toolbar" id="toolbar">
+        <button class="tb" data-act="undo" id="bUndo" title="Anulează (Ctrl+Z)">↶</button>
+        <button class="tb" data-act="redo" id="bRedo" title="Refă (Ctrl+Y)">↷</button>
+        <span class="sep"></span>
+        <button class="tb" data-act="copy" title="Copiază (Ctrl+C)">Copiază</button>
+        <button class="tb" data-act="paste" title="Lipește (Ctrl+V)">Lipește</button>
+        <span class="sep"></span>
+        <button class="tb" data-act="bold" id="bBold" title="Aldin – Bold (Ctrl+B)"><b>B</b></button>
+        <button class="tb" data-act="italic" id="bItalic" title="Cursiv – Italic (Ctrl+I)"><i>I</i></button>
+        <button class="tb" data-act="fill" title="Culoare de umplere (fundal)">
+          <span class="stack"><svg width="16" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 8l5-5 5 5-5 5z"/><path d="M13.5 10.5c.8 1 1.2 1.7 1.2 2.2a1.2 1.2 0 01-2.4 0c0-.5.4-1.2 1.2-2.2z" fill="currentColor"/></svg><span class="cbar" id="fillBar" style="width:16px;background:#ffe699"></span></span>
+        </button>
+        <button class="tb" data-act="fcolor" title="Culoarea textului">
+          <span class="stack"><b style="font-size:14px">A</b><span class="cbar" id="fcolorBar" style="width:14px;background:#c00000"></span></span>
+        </button>
+        <span class="sep"></span>
+        <button class="tb" data-act="left" id="bLeft" title="Aliniere la stânga"><svg width="16" height="14" viewBox="0 0 16 14" stroke="currentColor" stroke-width="1.5"><path d="M1 2h14M1 5.5h9M1 9h14M1 12.5h9"/></svg></button>
+        <button class="tb" data-act="center" id="bCenter" title="Centrare"><svg width="16" height="14" viewBox="0 0 16 14" stroke="currentColor" stroke-width="1.5"><path d="M1 2h14M4 5.5h8M1 9h14M4 12.5h8"/></svg></button>
+        <button class="tb" data-act="right" id="bRight" title="Aliniere la dreapta"><svg width="16" height="14" viewBox="0 0 16 14" stroke="currentColor" stroke-width="1.5"><path d="M1 2h14M6 5.5h9M1 9h14M6 12.5h9"/></svg></button>
+        <button class="tb" data-act="borders" title="Chenare (borduri)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="12" height="12"/><path d="M8 2v12M2 8h12"/></svg><small>▾</small></button>
+        <span class="sep"></span>
+        <select class="sel-fmt" id="numFmt" title="Format număr">
+          <option value="g">General</option>
+          <option value="n2">Număr (0,00)</option>
+          <option value="c" hidden>Personalizat</option>
+        </select>
+        <button class="tb" data-act="decUp" title="Mărește numărul de zecimale">+,0</button>
+        <button class="tb" data-act="decDown" title="Micșorează numărul de zecimale">−,0</button>
+        <span class="sep"></span>
+        <button class="tb" data-act="autosum" id="bAutosum" title="Însumare automată (Σ)">Σ <small>▾</small></button>
+      </div>
+
+      <div class="fxrow">
+        <input id="nameBox" readonly tabindex="-1" aria-label="Căsuța de nume">
+        <span class="fxl">fx</span>
+        <input id="fx" autocomplete="off" spellcheck="false" aria-label="Bara de formule">
+      </div>
+
+      <div class="gridscroll" id="gridScroll">
+        <div id="gridInner">
+          <table id="grid"></table>
+          <div id="clipBox" hidden></div>
+          <div id="fillBox" hidden></div>
+          <div id="selBox"></div>
+          <div id="fillHandle"></div>
+          <input id="cellEditor" name="cell-edit-x" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        </div>
+      </div>
+
+      <div class="statusbar"><span class="tab">Foaie1</span><span class="sp"></span><span id="stats"></span></div>
+    </section>
+
+    <aside class="tasks" id="tasksPane">
+      <div class="tpHead"><h2>Cerințe</h2><div class="sumbox" id="sumBox"></div></div>
+      <p class="lead">Lucrează în foaia de calcul din stânga. Tabelul începe în celula <b>A1</b>. Rezultatele se obțin cu <b>formule</b> (încep cu <b>=</b>), nu se scriu de mână.</p>
+      <div id="tasks"></div>
+      <details class="tips">
+        <summary>Scurtături utile</summary>
+        <ul>
+          <li><kbd>Enter</kbd> mută în jos, <kbd>Tab</kbd> mută la dreapta, <kbd>F2</kbd> editează celula.</li>
+          <li><kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>V</kbd> copiază și lipește (formulele se adaptează).</li>
+          <li>Pătrățelul verde din colțul selecției (mânerul de umplere) se trage pentru a copia formule sau numerotări.</li>
+          <li>La scrierea unei formule poți da clic pe celule sau trage peste un interval ca să le inserezi.</li>
+          <li>Lățimea coloanelor se schimbă trăgând de marginea antetului (A, B, C…).</li>
+          <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> anulează ultima acțiune.</li>
+        </ul>
+      </details>
+    </aside>
+  </div>
+</div>
+
+<div id="pop"></div>
+<div id="toast"></div>
+<div id="modal" class="backdrop" hidden><div class="box" id="modalBox"></div></div>
+<div id="printArea"></div>
+
+<!-- ======================= SETĂRI PENTRU PROFESOR ======================= -->
+<script id="config">
+const CONFIG = {
+  TITLE: 'Test Excel – Medii și absențe',
+  TIME_LIMIT_MIN: 15,     // minute; 0 = fără limită de timp
+  SHOW_FEEDBACK: true,    // true = butonul „Verifică” la fiecare cerință; false = nota apare doar la final (mod test)
+  ALLOW_AUTOSUM: true     // false = ascunde butonul Σ (Însumare automată)
+};
+</script>
+
+<!-- ======================= MOTOR DE CALCUL + EVALUARE (fără DOM) ======================= -->
+<script id="core">
+'use strict';
+const COLS = 10, ROWS = 25, OFICIU = 10;
+
+class XlErr { constructor(code){ this.code = code; } }
+const EMPTY_STYLE = Object.freeze({});
+
+function colName(c){ let s=''; c++; while(c>0){ const m=(c-1)%26; s=String.fromCharCode(65+m)+s; c=Math.floor((c-1)/26); } return s; }
+function colIndex(s){ let n=0; for(const ch of s.toUpperCase()) n=n*26+(ch.charCodeAt(0)-64); return n-1; }
+function idOf(r,c){ return colName(c)+(r+1); }
+function r2(x){ return Math.round(x*100)/100; }
+
+function parseNumeric(s){
+  if(typeof s==='number') return s;
+  const t=String(s).trim();
+  if(/^[-+]?(\d+([.,]\d+)?|[.,]\d+)$/.test(t)) return parseFloat(t.replace(',','.'));
+  return null;
+}
+function fmtNum(n, dec){
+  if(!isFinite(n)) return '#NUM!';
+  let s = dec==null ? String(parseFloat(n.toPrecision(10))) : n.toFixed(dec);
+  if(/e/i.test(s)) s = String(n);
+  return s.replace('.',',');
+}
+
+/* ---------- tokenizer + parser ---------- */
+function tokenize(src){
+  const toks=[]; let i=0, m;
+  while(i<src.length){
+    const rest=src.slice(i);
+    if((m=/^\s+/.exec(rest))){ i+=m[0].length; continue; }
+    if((m=/^"((?:[^"]|"")*)"/.exec(rest))) toks.push({t:'str', v:m[1].replace(/""/g,'"'), s:i, e:i+m[0].length});
+    else if((m=/^(\d+(?:\.\d+)?|\.\d+)/.exec(rest))) toks.push({t:'num', v:parseFloat(m[1]), s:i, e:i+m[0].length});
+    else if((m=/^(\$?)([A-Za-z]{1,2})(\$?)(\d+)(?![A-Za-z0-9_.(])/.exec(rest)))
+      toks.push({t:'ref', ca:!!m[1], col:colIndex(m[2]), ra:!!m[3], row:+m[4]-1, s:i, e:i+m[0].length});
+    else if((m=/^[A-Za-z_][A-Za-z0-9_.]*(?=\s*\()/.exec(rest))) toks.push({t:'func', v:m[0].toUpperCase(), s:i, e:i+m[0].length});
+    else if((m=/^[A-Za-z_][A-Za-z0-9_.]*/.exec(rest))) toks.push({t:'name', v:m[0].toUpperCase(), s:i, e:i+m[0].length});
+    else if((m=/^(<=|>=|<>|[-+*\/^&=<>(),;:%])/.exec(rest))) toks.push({t:'op', v:m[0], s:i, e:i+m[0].length});
+    else throw new SyntaxError('Caracter neașteptat: '+rest[0]);
+    i+=m[0].length;
+  }
+  return toks;
+}
+
+function parseFormula(src){
+  const toks=tokenize(src); let p=0;
+  const peek=()=>toks[p], next=()=>toks[p++];
+  const isOp=v=>peek() && peek().t==='op' && peek().v===v;
+  const CMP=['=','<>','<','>','<=','>='];
+  function expr(){ let l=concat(); while(peek() && peek().t==='op' && CMP.includes(peek().v)){ const op=next().v; l={t:'bin',op,l,r:concat()}; } return l; }
+  function concat(){ let l=add(); while(isOp('&')){ next(); l={t:'bin',op:'&',l,r:add()}; } return l; }
+  function add(){ let l=mul(); while(isOp('+')||isOp('-')){ const op=next().v; l={t:'bin',op,l,r:mul()}; } return l; }
+  function mul(){ let l=pow(); while(isOp('*')||isOp('/')){ const op=next().v; l={t:'bin',op,l,r:pow()}; } return l; }
+  function pow(){ let l=unary(); while(isOp('^')){ next(); l={t:'bin',op:'^',l,r:unary()}; } return l; }
+  function unary(){ if(isOp('-')||isOp('+')){ const op=next().v; return {t:'un',op,e:unary()}; } return postfix(); }
+  function postfix(){ let e=primary(); while(isOp('%')){ next(); e={t:'bin',op:'/',l:e,r:{t:'num',v:100}}; } return e; }
+  function primary(){
+    const t=next();
+    if(!t) throw new SyntaxError('Formulă incompletă');
+    if(t.t==='num') return {t:'num',v:t.v};
+    if(t.t==='str') return {t:'str',v:t.v};
+    if(t.t==='ref'){
+      const a={t:'ref', id:idOf(t.row,t.col), row:t.row, col:t.col};
+      if(isOp(':')){
+        next(); const t2=next();
+        if(!t2||t2.t!=='ref') throw new SyntaxError('Interval incomplet');
+        return {t:'range', r1:Math.min(a.row,t2.row), c1:Math.min(a.col,t2.col), r2:Math.max(a.row,t2.row), c2:Math.max(a.col,t2.col)};
+      }
+      return a;
+    }
+    if(t.t==='func'){
+      if(!isOp('(')) throw new SyntaxError('Lipsește (');
+      next(); const args=[];
+      if(isOp(')')){ next(); return {t:'call',name:t.v,args}; }
+      for(;;){
+        args.push(expr());
+        if(isOp(',')||isOp(';')){ next(); continue; }
+        if(isOp(')')){ next(); break; }
+        throw new SyntaxError('Lipsește )');
+      }
+      return {t:'call',name:t.v,args};
+    }
+    if(t.t==='name'){
+      if(t.v==='TRUE') return {t:'bool',v:true};
+      if(t.v==='FALSE') return {t:'bool',v:false};
+      return {t:'name',v:t.v};
+    }
+    if(t.t==='op' && t.v==='('){ const e=expr(); if(!isOp(')')) throw new SyntaxError('Lipsește )'); next(); return e; }
+    throw new SyntaxError('Token neașteptat');
+  }
+  const ast=expr();
+  if(p<toks.length) throw new SyntaxError('Text în plus la finalul formulei');
+  return ast;
+}
+
+const AST_CACHE=new Map();
+function astOf(raw){
+  if(!AST_CACHE.has(raw)){
+    let a; try{ a=parseFormula(raw.slice(1)); }catch(e){ a={err:e.message||'eroare'}; }
+    AST_CACHE.set(raw,a);
+  }
+  const a=AST_CACHE.get(raw);
+  if(a.err) throw new SyntaxError(a.err);
+  return a;
+}
+function tryAst(raw){ try{ return astOf(raw); }catch(e){ return null; } }
+
+function shiftFormula(raw, dr, dc){
+  const body=raw.slice(1); let toks;
+  try{ toks=tokenize(body); }catch(e){ return raw; }
+  let out='=', last=0;
+  for(const t of toks){
+    if(t.t!=='ref') continue;
+    const row=t.ra?t.row:t.row+dr, col=t.ca?t.col:t.col+dc;
+    out+=body.slice(last,t.s);
+    out+=(row<0||col<0)?'#REF!':((t.ca?'$':'')+colName(col)+(t.ra?'$':'')+(row+1));
+    last=t.e;
+  }
+  return out+body.slice(last);
+}
+
+function refsIn(n, out=new Set()){
+  if(!n) return out;
+  if(n.t==='ref') out.add(n.id);
+  else if(n.t==='range'){ for(let r=n.r1;r<=n.r2;r++) for(let c=n.c1;c<=n.c2;c++) out.add(idOf(r,c)); }
+  else { (n.args||[]).forEach(a=>refsIn(a,out)); refsIn(n.l,out); refsIn(n.r,out); refsIn(n.e,out); }
+  return out;
+}
+function findCalls(n, name, out=[]){
+  if(!n) return out;
+  if(n.t==='call' && n.name===name) out.push(n);
+  (n.args||[]).forEach(a=>findCalls(a,name,out));
+  findCalls(n.l,name,out); findCalls(n.r,name,out); findCalls(n.e,name,out);
+  return out;
+}
+function sameSet(a,b){ if(a.size!==b.size) return false; for(const x of a) if(!b.has(x)) return false; return true; }
+
+/* ---------- foaia de calcul ---------- */
+class Sheet{
+  constructor(){ this.cells={}; this.cache=new Map(); this.busy=new Set(); }
+  ensure(id){ return this.cells[id] || (this.cells[id]={raw:'',s:{}}); }
+  raw(id){ const c=this.cells[id]; return c?c.raw:''; }
+  st(id){ const c=this.cells[id]; return c?c.s:EMPTY_STYLE; }
+  invalidate(){ this.cache.clear(); }
+  edge(r,c,side){
+    const own=this.st(idOf(r,c));
+    if(own[side]) return true;
+    const dr={t:-1,b:1,l:0,r:0}[side], dc={t:0,b:0,l:-1,r:1}[side];
+    const nr=r+dr, nc=c+dc; if(nr<0||nc<0) return false;
+    const opp={t:'b',b:'t',l:'r',r:'l'}[side];
+    return !!this.st(idOf(nr,nc))[opp];
+  }
+  get(id){ try{ return this.val(id); }catch(e){ if(e instanceof XlErr) return e; throw e; } }
+  kind(id){
+    if(this.raw(id)==='') return 'empty';
+    const v=this.get(id);
+    if(v instanceof XlErr) return 'err';
+    if(typeof v==='number') return 'num';
+    if(typeof v==='boolean') return 'bool';
+    return 'text';
+  }
+  display(id){
+    if(this.raw(id)==='') return '';
+    const v=this.get(id);
+    if(v instanceof XlErr) return v.code;
+    if(typeof v==='number') return fmtNum(v, this.st(id).dec==null?null:this.st(id).dec);
+    if(typeof v==='boolean') return v?'TRUE':'FALSE';
+    return String(v);
+  }
+  val(id){
+    if(this.cache.has(id)){ const v=this.cache.get(id); if(v instanceof XlErr) throw v; return v; }
+    const raw=this.raw(id);
+    if(raw==='') return null;
+    let v;
+    if(raw[0]==='='){
+      if(this.busy.has(id)) throw new XlErr('#CIRC!');
+      this.busy.add(id);
+      try{
+        const x=this.ev(astOf(raw));
+        v = Array.isArray(x) ? new XlErr('#VALUE!') : (x===null?0:x);
+      }catch(e){
+        if(e instanceof XlErr) v=e;
+        else if(e instanceof SyntaxError) v=new XlErr(raw.includes('#REF!')?'#REF!':'#EROARE!');
+        else v=new XlErr('#VALUE!');
+      }finally{ this.busy.delete(id); }
+    } else {
+      const n=parseNumeric(raw);
+      v = n!==null ? n : raw;
+    }
+    this.cache.set(id,v);
+    if(v instanceof XlErr) throw v;
+    return v;
+  }
+  ev(n){
+    switch(n.t){
+      case 'num': case 'str': case 'bool': return n.v;
+      case 'ref': return this.val(n.id);
+      case 'range': return this.rangeVals(n);
+      case 'name': throw new XlErr('#NAME?');
+      case 'un': { const v=this.num(this.ev(n.e)); return n.op==='-'?-v:v; }
+      case 'bin': return this.bin(n);
+      case 'call': return this.call(n);
+    }
+    throw new XlErr('#VALUE!');
+  }
+  rangeVals(n){
+    if((n.r2-n.r1+1)*(n.c2-n.c1+1)>20000) throw new XlErr('#VALUE!');
+    const out=[];
+    for(let r=n.r1;r<=n.r2;r++) for(let c=n.c1;c<=n.c2;c++) out.push(this.val(idOf(r,c)));
+    return out;
+  }
+  num(v){
+    if(Array.isArray(v)) throw new XlErr('#VALUE!');
+    if(v===null) return 0;
+    if(typeof v==='number') return v;
+    if(typeof v==='boolean') return v?1:0;
+    const x=parseNumeric(v); if(x===null) throw new XlErr('#VALUE!'); return x;
+  }
+  bin(n){
+    const op=n.op, a=this.ev(n.l), b=this.ev(n.r);
+    if(Array.isArray(a)||Array.isArray(b)) throw new XlErr('#VALUE!');
+    if(op==='&') return (a===null?'':String(a))+(b===null?'':String(b));
+    if(['=','<>','<','>','<=','>='].includes(op)){
+      let x=a, y=b;
+      if(typeof x==='string'||typeof y==='string'){ x=String(x===null?'':x).toLowerCase(); y=String(y===null?'':y).toLowerCase(); }
+      else { x=this.num(x); y=this.num(y); }
+      switch(op){ case '=': return x===y; case '<>': return x!==y; case '<': return x<y; case '>': return x>y; case '<=': return x<=y; default: return x>=y; }
+    }
+    const x=this.num(a), y=this.num(b);
+    switch(op){
+      case '+': return x+y;
+      case '-': return x-y;
+      case '*': return x*y;
+      case '/': if(y===0) throw new XlErr('#DIV/0!'); return x/y;
+      case '^': { const r=Math.pow(x,y); if(!isFinite(r)) throw new XlErr('#NUM!'); return r; }
+    }
+    throw new XlErr('#VALUE!');
+  }
+  nums(args, lenient){
+    const out=[];
+    for(const a of args){
+      if(a.t==='range'||a.t==='ref'){
+        const vals=a.t==='range'?this.rangeVals(a):[this.val(a.id)];
+        for(const v of vals) if(typeof v==='number') out.push(v);
+      } else {
+        const v=this.ev(a);
+        if(Array.isArray(v)){ for(const x of v) if(typeof x==='number') out.push(x); }
+        else if(typeof v==='number') out.push(v);
+        else if(typeof v==='boolean'){ if(!lenient) out.push(v?1:0); }
+        else if(typeof v==='string'){ const x=parseNumeric(v); if(x!==null) out.push(x); else if(!lenient) throw new XlErr('#VALUE!'); }
+      }
+    }
+    return out;
+  }
+  call(n){
+    const a=n.args;
+    switch(n.name){
+      case 'SUM': return this.nums(a).reduce((x,y)=>x+y,0);
+      case 'AVERAGE': { const v=this.nums(a); if(!v.length) throw new XlErr('#DIV/0!'); return v.reduce((x,y)=>x+y,0)/v.length; }
+      case 'MIN': { const v=this.nums(a); return v.length?Math.min(...v):0; }
+      case 'MAX': { const v=this.nums(a); return v.length?Math.max(...v):0; }
+      case 'COUNT': return this.nums(a,true).length;
+      case 'ABS': { if(a.length!==1) throw new XlErr('#VALUE!'); return Math.abs(this.num(this.ev(a[0]))); }
+      case 'ROUND': {
+        if(a.length!==2) throw new XlErr('#VALUE!');
+        const x=this.num(this.ev(a[0])), d=Math.trunc(this.num(this.ev(a[1]))), f=Math.pow(10,d);
+        return Math.sign(x)*Math.round(Math.abs(x)*f+1e-9)/f;
+      }
+      case 'IF': {
+        if(a.length<2||a.length>3) throw new XlErr('#VALUE!');
+        let c=this.ev(a[0]); if(Array.isArray(c)) throw new XlErr('#VALUE!');
+        const truthy = typeof c==='boolean' ? c : this.num(c)!==0;
+        if(truthy) return this.ev(a[1]);
+        return a.length===3 ? this.ev(a[2]) : false;
+      }
+    }
+    throw new XlErr('#NAME?');
+  }
+}
+
+/* ---------- evaluare automată ---------- */
+function norm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,''); }
+function crit(label, pts, ok, total, note){
+  return {label, pts, got:r2(total?pts*ok/total:0), ok, total, full:ok===total, note:note||''};
+}
+const listBad = (arr, pre) => arr.length ? (pre||'Verifică: ')+arr.join(', ') : '';
+
+const EXPECTED_HEADERS=['Nr. crt.','Numele și prenumele','Media 1','Media 2','Media anuală','Absențe 1','Absențe 2','Total absențe'];
+const HEADER_ALT={1:['numeprenume','numesiprenume']};
+
+function gradeT1(sh){
+  const cr=[];
+  let ok=0, bad=[];
+  EXPECTED_HEADERS.forEach((h,c)=>{
+    const id=idOf(0,c), got=norm(sh.raw(id));
+    ([norm(h)].concat(HEADER_ALT[c]||[])).includes(got) ? ok++ : bad.push(id);
+  });
+  cr.push(crit('Antetul din rândul 1 (A1:H1) are cele 8 coloane cerute, în ordine', 6, ok, 8, listBad(bad)));
+
+  ok=0; bad=[];
+  for(let k=1;k<=5;k++){
+    const id=idOf(k,1), v=sh.get(id);
+    const words=typeof v==='string'?v.trim().split(/\s+/).filter(w=>w.length>=2):[];
+    (words.length>=2 && parseNumeric(v)===null) ? ok++ : bad.push(id);
+  }
+  cr.push(crit('Numele și prenumele a 5 elevi (B2:B6)', 4, ok, 5, listBad(bad,'Lipsesc / incomplete: ')));
+
+  ok=0; bad=[];
+  for(let k=1;k<=5;k++){ const id=idOf(k,0); sh.get(id)===k ? ok++ : bad.push(id); }
+  cr.push(crit('Numerotare 1–5 în coloana Nr. crt. (A2:A6)', 2, ok, 5, listBad(bad)));
+
+  ok=0; bad=[];
+  for(let k=1;k<=5;k++) for(const c of [2,3]){
+    const id=idOf(k,c), v=sh.get(id);
+    (typeof v==='number' && v>=1 && v<=10 && sh.raw(id)[0]!=='=') ? ok++ : bad.push(id);
+  }
+  cr.push(crit('Media 1 și Media 2: numere între 1 și 10 (C2:D6)', 4, ok, 10, listBad(bad,'Lipsesc / nu sunt note valide: ')));
+
+  ok=0; bad=[];
+  for(let k=1;k<=5;k++) for(const c of [5,6]){
+    const id=idOf(k,c), v=sh.get(id);
+    (typeof v==='number' && Number.isInteger(v) && v>=0 && sh.raw(id)[0]!=='=') ? ok++ : bad.push(id);
+  }
+  cr.push(crit('Absențe 1 și Absențe 2: numere întregi ≥ 0 (F2:G6)', 4, ok, 10, listBad(bad,'Lipsesc / nu sunt valide: ')));
+  return cr;
+}
+
+function gradeT2(sh){
+  const cr=[]; let ok=0, bad=[];
+  for(let c=0;c<8;c++){ const id=idOf(0,c); sh.st(id).b ? ok++ : bad.push(id); }
+  cr.push(crit('Antetul (A1:H1) este scris aldin (Bold)', 4, ok, 8, listBad(bad,'Fără Bold: ')));
+
+  ok=0; bad=[];
+  for(let c=0;c<8;c++){ const id=idOf(0,c), f=(sh.st(id).fill||'').toLowerCase(); (f && f!=='#ffffff' && f!=='#fff') ? ok++ : bad.push(id); }
+  cr.push(crit('Antetul are culoare de fundal (diferită de alb)', 4, ok, 8, listBad(bad,'Fără culoare: ')));
+
+  ok=0; bad=[];
+  for(let c=0;c<8;c++){ const id=idOf(0,c); sh.st(id).al==='center' ? ok++ : bad.push(id); }
+  cr.push(crit('Textul din antet este centrat', 4, ok, 8, listBad(bad,'Necentrate: ')));
+
+  ok=0; let lacking=0;
+  for(let r=0;r<=5;r++) for(let c=0;c<8;c++){
+    (sh.edge(r,c,'t')&&sh.edge(r,c,'b')&&sh.edge(r,c,'l')&&sh.edge(r,c,'r')) ? ok++ : lacking++;
+  }
+  cr.push(crit('Chenar la toate celulele tabelului (A1:H6)', 4, ok, 48, lacking?lacking+' celule nu au chenar complet.':''));
+
+  ok=0; bad=[];
+  for(let k=1;k<=5;k++){ const id=idOf(k,4); sh.st(id).dec===2 ? ok++ : bad.push(id); }
+  cr.push(crit('Media anuală (E2:E6) afișată cu 2 zecimale', 4, ok, 5, listBad(bad,'Altă formatare: ')));
+  return cr;
+}
+
+function gradeRowFn(sh, fn, outCol, srcCols, pts, labels, expFn, srcName){
+  let nf=0,nr=0,nv=0; const bF=[],bR=[],bV=[];
+  for(let k=1;k<=5;k++){
+    const id=idOf(k,outCol), raw=sh.raw(id);
+    const ast = raw[0]==='=' ? tryAst(raw) : null;
+    const calls = ast ? findCalls(ast, fn) : [];
+    calls.length ? nf++ : bF.push(id);
+    const want=new Set(srcCols.map(c=>idOf(k,c)));
+    calls.some(cl=>sameSet(refsIn(cl),want)) ? nr++ : bR.push(id);
+    const vals=srcCols.map(c=>sh.get(idOf(k,c))).filter(v=>typeof v==='number');
+    const exp=vals.length?expFn(vals):null;
+    const out=sh.get(id);
+    const tol=(ast && findCalls(ast,'ROUND').length)?0.0051:1e-9;
+    (typeof out==='number' && exp!==null && Math.abs(out-exp)<=tol) ? nv++ : bV.push(id);
+  }
+  return [
+    crit(labels[0], pts[0], nf, 5, listBad(bF,'Fără '+fn+': ')),
+    crit(labels[1], pts[1], nr, 5, listBad(bR,'Argumente greșite: ')),
+    crit(labels[2], pts[2], nv, 5, listBad(bV,'Rezultat greșit sau lipsă: '))
+  ];
+}
+function gradeT3(sh){
+  return gradeRowFn(sh,'AVERAGE',4,[2,3],[7,6,7],
+    ['Se folosește funcția AVERAGE în E2:E6','Argumentele sunt Media 1 și Media 2 ale aceluiași elev (ex. C2:D2 pe rândul 2)','Rezultatele sunt corecte'],
+    v=>v.reduce((a,b)=>a+b,0)/v.length);
+}
+function gradeT4(sh){
+  return gradeRowFn(sh,'SUM',7,[5,6],[5,5,5],
+    ['Se folosește funcția SUM în H2:H6','Argumentele sunt Absențe 1 și Absențe 2 ale aceluiași elev (ex. F2:G2 pe rândul 2)','Rezultatele sunt corecte'],
+    v=>v.reduce((a,b)=>a+b,0));
+}
+function gradeAgg(sh, fn, id, label, expFn){
+  const raw=sh.raw(id), ast=raw[0]==='='?tryAst(raw):null;
+  const calls=ast?findCalls(ast,fn):[];
+  const want=new Set([1,2,3,4,5].map(k=>idOf(k,4)));
+  const vals=[1,2,3,4,5].map(k=>sh.get(idOf(k,4))).filter(v=>typeof v==='number');
+  const exp=vals.length?expFn(vals):null, out=sh.get(id);
+  const tol=(ast && findCalls(ast,'ROUND').length)?0.0051:1e-9;
+  return [
+    crit(id+': se folosește funcția '+fn, 2, calls.length?1:0, 1, calls.length?'':(raw?'Celula nu conține formula cu '+fn+'.':'Celula este goală.')),
+    crit(id+': '+fn+' se aplică pe intervalul E2:E6 (Media anuală)', 2, calls.some(cl=>sameSet(refsIn(cl),want))?1:0, 1, ''),
+    crit(id+': valoarea '+label+' este corectă', 2, (typeof out==='number'&&exp!==null&&Math.abs(out-exp)<=tol)?1:0, 1, '')
+  ];
+}
+function gradeT5(sh){
+  const cr=[].concat(
+    gradeAgg(sh,'MIN','E8','minima',v=>Math.min(...v)),
+    gradeAgg(sh,'MAX','E9','maxima',v=>Math.max(...v))
+  );
+  let ok=0;
+  if(norm(sh.raw('B8')).includes('min')) ok++;
+  if(norm(sh.raw('B9')).includes('max')) ok++;
+  cr.push(crit('Etichetele „Media minima” în B8 și „Media maxima” în B9', 3, ok, 2, ok<2?'Scrie etichetele în B8 și B9.':''));
+  return cr;
+}
+
+const TASKS=[
+ {id:'t1', title:'Introducerea datelor', max:20, grade:gradeT1,
+  desc:'Începând din <b>A1</b>, scrie pe rândul 1 antetul cu coloanele: <i>Nr. crt., Numele și prenumele, Media 1, Media 2, Media anuală, Absențe 1, Absențe 2, Total absențe</i>.<br>Pe rândurile 2–6 introdu datele a <b>5 elevi</b>: numerotarea 1–5, numele și prenumele, două medii (între 1 și 10) și absențele din cele două semestre (numere întregi). Coloanele <i>Media anuală</i> și <i>Total absențe</i> le completezi la cerințele următoare.'},
+ {id:'t2', title:'Formatarea tabelului', max:20, grade:gradeT2,
+  desc:'Formatează tabelul:<ul><li>antetul <b>A1:H1</b>: text aldin, centrat și cu culoare de fundal;</li><li>întregul tabel <b>A1:H6</b>: chenar la toate celulele;</li><li>coloana <i>Media anuală</i> (<b>E2:E6</b>): afișare cu 2 zecimale.</li></ul>'},
+ {id:'t3', title:'Media anuală – funcția AVERAGE', max:20, grade:gradeT3,
+  desc:'În <b>E2:E6</b> calculează <b>media anuală</b> a fiecărui elev, folosind funcția <b>AVERAGE</b> pe Media 1 și Media 2.'},
+ {id:'t4', title:'Total absențe – funcția SUM', max:15, grade:gradeT4,
+  desc:'În <b>H2:H6</b> calculează <b>totalul absențelor</b> fiecărui elev, folosind funcția <b>SUM</b> pe Absențe 1 și Absențe 2.'},
+ {id:'t5', title:'Media minimă și maximă – MIN și MAX', max:15, grade:gradeT5,
+  desc:'Sub tabel:<ul><li>în <b>B8</b> scrie <i>Media minima</i>, iar în <b>E8</b> determină cu <b>MIN</b> cea mai mică medie anuală;</li><li>în <b>B9</b> scrie <i>Media maxima</i>, iar în <b>E9</b> determină cu <b>MAX</b> cea mai mare medie anuală.</li></ul>'}
+];
+
+function evaluateAll(sh){
+  const tasks=TASKS.map(t=>{
+    const criteria=t.grade(sh);
+    return {id:t.id, title:t.title, max:t.max, got:r2(criteria.reduce((a,c)=>a+c.got,0)), criteria};
+  });
+  const taskTotal=r2(tasks.reduce((a,t)=>a+t.got,0));
+  const total=r2(taskTotal+OFICIU);
+  return {tasks, taskTotal, oficiu:OFICIU, total, grade:r2(total/10)};
+}
+</script>
+
+<!-- ======================= INTERFAȚA ======================= -->
+<script id="ui">
+'use strict';
+const $=s=>document.querySelector(s);
+const sheet=new Sheet();
+const tds=[];
+const state={cur:{r:0,c:0}, ext:{r:0,c:0}, started:false, finished:false, info:null, result:null};
+let editing=false, edit=null, drag=null, clip=null, fillSrc=null, fillPlan=null, resizing=null;
+const widths=[76,214,112,112,120,114,114,120,100,100];
+const undoStack=[], redoStack=[];
+const lastRes={}, attempts={};
+let lastFill='#FFE699', lastFont='#C00000', timerId=null, startTs=0;
+
+const gridScroll=$('#gridScroll'), table=$('#grid'), cellEditor=$('#cellEditor'), fx=$('#fx');
+const selBox=$('#selBox'), fillHandle=$('#fillHandle'), fillBox=$('#fillBox'), clipBox=$('#clipBox');
+const mctx=document.createElement('canvas').getContext('2d');
+const measureText=(t,b)=>{ mctx.font=(b?'bold ':'')+'15px Calibri, "Segoe UI", Arial, sans-serif'; return mctx.measureText(t).width; };
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fmtN=x=>String(r2(x)).replace('.',',');
+const curId=()=>idOf(state.cur.r,state.cur.c);
+function selRange(){ const a=state.cur,b=state.ext; return {r1:Math.min(a.r,b.r),r2:Math.max(a.r,b.r),c1:Math.min(a.c,b.c),c2:Math.max(a.c,b.c)}; }
+function fmtTime(s){ s=Math.max(0,Math.round(s)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+
+let toastT=null;
+function toast(msg,ms){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),ms||3600); }
+
+/* ---------- construirea grilei ---------- */
+function buildGrid(){
+  let h='<colgroup><col style="width:46px">';
+  for(let c=0;c<COLS;c++) h+='<col style="width:'+widths[c]+'px">';
+  h+='</colgroup><thead><tr><th class="corner"></th>';
+  for(let c=0;c<COLS;c++) h+='<th class="ch" data-c="'+c+'">'+colName(c)+'<i class="rs" data-c="'+c+'"></i></th>';
+  h+='</tr></thead><tbody>';
+  for(let r=0;r<ROWS;r++){
+    h+='<tr><th class="rh" data-r="'+r+'">'+(r+1)+'</th>';
+    for(let c=0;c<COLS;c++) h+='<td data-r="'+r+'" data-c="'+c+'"></td>';
+    h+='</tr>';
+  }
+  h+='</tbody>';
+  table.innerHTML=h;
+  const rows=table.tBodies[0].rows;
+  for(let r=0;r<ROWS;r++){ tds.push([]); for(let c=0;c<COLS;c++) tds[r].push(rows[r].cells[c+1]); }
+  applyWidths();
+}
+function applyWidths(){
+  const cols=table.querySelectorAll('col');
+  widths.forEach((w,c)=>{ cols[c+1].style.width=w+'px'; });
+  table.style.width=(46+widths.reduce((a,b)=>a+b,0))+'px';
+}
+
+/* ---------- afișare ---------- */
+function renderCell(r,c){
+  const id=idOf(r,c), td=tds[r][c], s=sheet.st(id);
+  td.textContent=sheet.display(id);
+  const k=sheet.kind(id);
+  td.style.textAlign=s.al||(k==='num'?'right':(k==='bool'||k==='err')?'center':'left');
+  td.style.fontWeight=s.b?'700':'';
+  td.style.fontStyle=s.i?'italic':'';
+  td.style.background=s.fill||'';
+  td.style.color=s.color||'';
+  td.style.borderRightColor=sheet.edge(r,c,'r')?'#000':'';
+  td.style.borderBottomColor=sheet.edge(r,c,'b')?'#000':'';
+  const sh=[];
+  if(r===0 && sheet.edge(0,c,'t')) sh.push('inset 0 1px 0 #000');
+  if(c===0 && sheet.edge(r,0,'l')) sh.push('inset 1px 0 0 #000');
+  td.style.boxShadow=sh.join(',');
+}
+function renderAll(){ for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) renderCell(r,c); }
+function recalcAll(){ sheet.invalidate(); renderAll(); renderSel(); }
+
+function boxFor(R){
+  const a=tds[R.r1][R.c1], b=tds[R.r2][R.c2];
+  const x=a.offsetLeft, y=a.offsetTop;
+  return {x, y, w:b.offsetLeft+b.offsetWidth-x, h:b.offsetTop+b.offsetHeight-y};
+}
+function placeBox(el,R,pad){
+  const g=boxFor(R);
+  el.style.left=(g.x-1)+'px'; el.style.top=(g.y-1)+'px';
+  el.style.width=(g.w+1+(pad||0))+'px'; el.style.height=(g.h+1+(pad||0))+'px';
+}
+function renderSel(){
+  const R=selRange();
+  placeBox(selBox,R);
+  selBox.classList.toggle('single',R.r1===R.r2&&R.c1===R.c2);
+  const g=boxFor(R);
+  fillHandle.style.left=(g.x+g.w-5)+'px'; fillHandle.style.top=(g.y+g.h-5)+'px';
+  fillHandle.hidden=state.finished||editing;
+  if(clip) placeBox(clipBox,clip.R);
+  positionEditor();
+  syncUI();
+}
+function positionEditor(){
+  const td=tds[state.cur.r][state.cur.c];
+  cellEditor.style.left=(td.offsetLeft-1)+'px'; cellEditor.style.top=(td.offsetTop-1)+'px';
+  cellEditor.style.height=(td.offsetHeight+1)+'px';
+  if(editing) autosizeEditor(); else cellEditor.style.width=(td.offsetWidth+1)+'px';
+}
+function autosizeEditor(){
+  const td=tds[state.cur.r][state.cur.c];
+  cellEditor.style.width=Math.max(td.offsetWidth+1, measureText(cellEditor.value,false)+30)+'px';
+}
+function inferDec(v){
+  if(typeof v!=='number') return 0;
+  const s=String(parseFloat(v.toPrecision(10)));
+  const i=s.indexOf('.'); return i<0?0:Math.min(9,s.length-i-1);
+}
+function syncUI(){
+  const R=selRange(), id=curId(), s=sheet.st(id);
+  $('#nameBox').value=(R.r1===R.r2&&R.c1===R.c2)?id:idOf(R.r1,R.c1)+':'+idOf(R.r2,R.c2);
+  if(!editing) fx.value=sheet.raw(id);
+  $('#bBold').classList.toggle('on',!!s.b);
+  $('#bItalic').classList.toggle('on',!!s.i);
+  $('#bLeft').classList.toggle('on',s.al==='left');
+  $('#bCenter').classList.toggle('on',s.al==='center');
+  $('#bRight').classList.toggle('on',s.al==='right');
+  $('#numFmt').value = s.dec==null?'g':(s.dec===2?'n2':'c');
+  $('#bUndo').disabled=!undoStack.length; $('#bRedo').disabled=!redoStack.length;
+  table.querySelectorAll('th.sel').forEach(t=>t.classList.remove('sel'));
+  const hs=table.tHead.rows[0].cells, rows=table.tBodies[0].rows;
+  for(let c=R.c1;c<=R.c2;c++) hs[c+1].classList.add('sel');
+  for(let r=R.r1;r<=R.r2;r++) rows[r].cells[0].classList.add('sel');
+  let n=0,sum=0;
+  for(let r=R.r1;r<=R.r2;r++) for(let c=R.c1;c<=R.c2;c++){ const v=sheet.get(idOf(r,c)); if(typeof v==='number'){ n++; sum+=v; } }
+  $('#stats').textContent = n>1 ? 'Medie: '+fmtNum(sum/n,null)+'   ·   Număr: '+n+'   ·   Sumă: '+fmtNum(sum,null) : '';
+}
+function ensureVisible(r,c){
+  const td=tds[r][c], sc=gridScroll;
+  const left=td.offsetLeft, top=td.offsetTop, right=left+td.offsetWidth, bottom=top+td.offsetHeight;
+  if(left<sc.scrollLeft+46) sc.scrollLeft=left-46; else if(right>sc.scrollLeft+sc.clientWidth) sc.scrollLeft=right-sc.clientWidth;
+  if(top<sc.scrollTop+24) sc.scrollTop=top-24; else if(bottom>sc.scrollTop+sc.clientHeight) sc.scrollTop=bottom-sc.clientHeight;
+}
+function focusGrid(){ if(state.finished||!state.started) return; cellEditor.focus({preventScroll:true}); }
+
+/* ---------- navigare ---------- */
+const DIRS={down:[1,0],up:[-1,0],left:[0,-1],right:[0,1]};
+const keyDir={ArrowDown:'down',ArrowUp:'up',ArrowLeft:'left',ArrowRight:'right'};
+function move(dir,extend){
+  const d=DIRS[dir], base=extend?state.ext:state.cur;
+  const nr=clamp(base.r+d[0],0,ROWS-1), nc=clamp(base.c+d[1],0,COLS-1);
+  if(extend) state.ext={r:nr,c:nc}; else { state.cur={r:nr,c:nc}; state.ext={r:nr,c:nc}; }
+  renderSel(); ensureVisible(nr,nc);
+}
+
+/* ---------- editare ---------- */
+function startEdit(text,which,mode,caret){
+  if(editing||state.finished||!state.started) return;
+  editing=true; edit={id:curId(), mode:mode||'edit', point:null, el:null};
+  cellEditor.value=text; fx.value=text;
+  cellEditor.classList.add('on'); autosizeEditor();
+  fillHandle.hidden=true;
+  edit.el=which==='bar'?fx:cellEditor;
+  edit.el.focus({preventScroll:true});
+  const p=caret==null?text.length:caret; edit.el.setSelectionRange(p,p);
+}
+function endEdit(){
+  editing=false; edit=null;
+  cellEditor.value=''; cellEditor.classList.remove('on');
+  fillHandle.hidden=state.finished;
+  focusGrid();
+}
+function commitEdit(){
+  if(!editing) return true;
+  const text=cellEditor.value.trim(), id=edit.id;
+  if(text[0]==='='){
+    try{ astOf(text); }
+    catch(e){ toast('Formula nu este scrisă corect – verifică parantezele, separatorii (, sau ;) și adresele celulelor.',4200); return false; }
+  }
+  if(text!==sheet.raw(id)) pushUndo();
+  if(text==='') { const c=sheet.cells[id]; if(c) c.raw=''; } else sheet.ensure(id).raw=text;
+  endEdit(); recalcAll();
+  return true;
+}
+function cancelEdit(){ if(!editing) return; endEdit(); syncUI(); }
+function ensureCommitted(){ return editing?commitEdit():true; }
+
+function setEditText(text,caret){
+  cellEditor.value=text; fx.value=text;
+  edit.el.setSelectionRange(caret,caret); autosizeEditor();
+}
+function tryPoint(e,r,c){
+  if(!edit) return false;
+  const el=edit.el, s=el.selectionStart, s2=el.selectionEnd, txt=el.value;
+  if(txt[0]!=='=') return false;
+  let start=s,end=s,ok=false;
+  if(edit.point && s===s2 && s===edit.point.end){ start=edit.point.start; end=edit.point.end; ok=true; }
+  else if(s!==s2 && s>0 && '=(,;+-*/^&<>'.includes(txt[s-1])){ end=s2; ok=true; }   // text selected (ex. intervalul propus de Σ) – se înlocuiește
+  else { const prev=txt.slice(0,s).trimEnd().slice(-1); if(prev && '=(,;+-*/^&<>'.includes(prev)) ok=true; }
+  if(!ok) return false;
+  e.preventDefault();
+  const ref=idOf(r,c);
+  setEditText(txt.slice(0,start)+ref+txt.slice(end), start+ref.length);
+  edit.point={start,end:start+ref.length,ar:r,ac:c};
+  drag='point';
+  return true;
+}
+
+function editKey(e,el){
+  const k=e.key;
+  if(k==='Enter'){ e.preventDefault(); if(commitEdit()) move(e.shiftKey?'up':'down'); }
+  else if(k==='Tab'){ e.preventDefault(); if(commitEdit()) move(e.shiftKey?'left':'right'); }
+  else if(k==='Escape'){ e.preventDefault(); cancelEdit(); }
+  else if(el===cellEditor && edit.mode==='enter' && cellEditor.value[0]!=='=' && keyDir[k]){
+    e.preventDefault(); if(commitEdit()) move(keyDir[k]);
+  }
+}
+
+cellEditor.addEventListener('keydown',e=>{
+  if(state.finished||!state.started) return;
+  if(editing){ editKey(e,cellEditor); return; }
+  const k=e.key, ctrl=e.ctrlKey||e.metaKey;
+  if(ctrl){
+    const low=k.toLowerCase();
+    if(low==='c'){ e.preventDefault(); doCopy(false); }
+    else if(low==='x'){ e.preventDefault(); doCopy(true); }
+    else if(low==='v'){ e.preventDefault(); doPaste(); }
+    else if(low==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
+    else if(low==='y'){ e.preventDefault(); redo(); }
+    else if(low==='b'){ e.preventDefault(); toggleStyle('b'); }
+    else if(low==='i'){ e.preventDefault(); toggleStyle('i'); }
+    else if(low==='a'){ e.preventDefault(); state.cur={r:0,c:0}; state.ext={r:ROWS-1,c:COLS-1}; renderSel(); }
+    return;
+  }
+  if(keyDir[k]){ e.preventDefault(); move(keyDir[k],e.shiftKey); }
+  else if(k==='Enter'){ e.preventDefault(); move(e.shiftKey?'up':'down'); }
+  else if(k==='Tab'){ e.preventDefault(); move(e.shiftKey?'left':'right'); }
+  else if(k==='F2'){ e.preventDefault(); startEdit(sheet.raw(curId()),'cell','edit'); }
+  else if(k==='Delete'||k==='Backspace'){ e.preventDefault(); clearSel(); }
+  else if(k==='Escape'){ clip=null; clipBox.hidden=true; }
+  else if(k==='Home'){ e.preventDefault(); state.cur={r:state.cur.r,c:0}; state.ext={...state.cur}; renderSel(); ensureVisible(state.cur.r,0); }
+});
+cellEditor.addEventListener('input',()=>{
+  if(!editing){
+    if(state.finished||!state.started){ cellEditor.value=''; return; }
+    editing=true; edit={id:curId(),mode:'enter',point:null,el:cellEditor};
+    cellEditor.classList.add('on'); fillHandle.hidden=true;
+  }
+  fx.value=cellEditor.value; edit.point=null; autosizeEditor();
+});
+cellEditor.addEventListener('focus',()=>{ if(editing) edit.el=cellEditor; });
+fx.addEventListener('focus',()=>{
+  if(state.finished||!state.started){ fx.blur(); return; }
+  if(!editing) startEdit(sheet.raw(curId()),'bar','edit'); else edit.el=fx;
+});
+fx.addEventListener('input',()=>{ if(editing){ cellEditor.value=fx.value; edit.point=null; autosizeEditor(); } });
+fx.addEventListener('keydown',e=>{ if(editing) editKey(e,fx); });
+
+/* ---------- istoric (undo / redo) ---------- */
+function pushUndo(){ undoStack.push(JSON.stringify(sheet.cells)); if(undoStack.length>120) undoStack.shift(); redoStack.length=0; }
+function undo(){
+  if(!ensureCommitted()||!undoStack.length) return;
+  redoStack.push(JSON.stringify(sheet.cells)); sheet.cells=JSON.parse(undoStack.pop()); recalcAll();
+}
+function redo(){
+  if(!ensureCommitted()||!redoStack.length) return;
+  undoStack.push(JSON.stringify(sheet.cells)); sheet.cells=JSON.parse(redoStack.pop()); recalcAll();
+}
+
+/* ---------- ștergere, copiere, lipire, umplere ---------- */
+function clearSel(){
+  if(!ensureCommitted()) return;
+  const R=selRange(); pushUndo();
+  for(let r=R.r1;r<=R.r2;r++) for(let c=R.c1;c<=R.c2;c++){ const x=sheet.cells[idOf(r,c)]; if(x) x.raw=''; }
+  recalcAll();
+}
+function doCopy(cut){
+  if(!ensureCommitted()) return;
+  const R=selRange(), cells=[];
+  for(let r=R.r1;r<=R.r2;r++){
+    const row=[];
+    for(let c=R.c1;c<=R.c2;c++){ const id=idOf(r,c); row.push({raw:sheet.raw(id), s:Object.assign({},sheet.st(id))}); }
+    cells.push(row);
+  }
+  clip={R,cells,cut};
+  clipBox.hidden=false; placeBox(clipBox,R);
+  toast(cut?'Decupat – alege celula țintă și apasă Ctrl+V.':'Copiat – alege celula țintă și apasă Ctrl+V.',2000);
+}
+function doPaste(){
+  if(!clip||!ensureCommitted()) return;
+  const h=clip.cells.length, w=clip.cells[0].length, R=selRange();
+  pushUndo();
+  if(clip.cut){
+    for(let r=clip.R.r1;r<=clip.R.r2;r++) for(let c=clip.R.c1;c<=clip.R.c2;c++){ const x=sheet.cells[idOf(r,c)]; if(x){ x.raw=''; x.s={}; } }
+  }
+  const starts=[];
+  if(h===1&&w===1&&(R.r2>R.r1||R.c2>R.c1)){ for(let r=R.r1;r<=R.r2;r++) for(let c=R.c1;c<=R.c2;c++) starts.push([r,c]); }
+  else starts.push([R.r1,R.c1]);
+  for(const [r0,c0] of starts){
+    for(let i=0;i<h;i++) for(let j=0;j<w;j++){
+      const tr=r0+i, tc=c0+j; if(tr>=ROWS||tc>=COLS) continue;
+      const src=clip.cells[i][j], sr=clip.R.r1+i, sc=clip.R.c1+j;
+      const t=sheet.ensure(idOf(tr,tc));
+      t.raw=src.raw[0]==='='?shiftFormula(src.raw,tr-sr,tc-sc):src.raw;
+      t.s=Object.assign({},src.s);
+    }
+  }
+  if(clip.cut){ clip=null; clipBox.hidden=true; }
+  if(starts.length===1){
+    state.cur={r:R.r1,c:R.c1}; state.ext={r:Math.min(ROWS-1,R.r1+h-1),c:Math.min(COLS-1,R.c1+w-1)};
+  }
+  recalcAll();
+}
+function applyFill(src,dir,count){
+  const vertical=dir==='down'||dir==='up', fwd=dir==='down'||dir==='right';
+  const L=vertical?(src.r2-src.r1+1):(src.c2-src.c1+1);
+  const lines=vertical?(src.c2-src.c1+1):(src.r2-src.r1+1);
+  pushUndo();
+  for(let li=0;li<lines;li++){
+    const cellAt=i=>vertical?[src.r1+i,src.c1+li]:[src.r1+li,src.c1+i];
+    let step=null;
+    if(L>=2){
+      const vals=[]; let ok=true;
+      for(let i=0;i<L;i++){
+        const [rr,cc]=cellAt(i), raw=sheet.raw(idOf(rr,cc));
+        const n=raw[0]==='='?null:parseNumeric(raw);
+        if(raw===''||n===null){ ok=false; break; } vals.push(n);
+      }
+      if(ok){ const d=vals[1]-vals[0]; if(vals.every((v,i)=>i===0||Math.abs(v-vals[i-1]-d)<1e-9)) step={d,v0:vals[0]}; }
+    }
+    for(let k=0;k<count;k++){
+      const off=fwd?L+k:-1-k, si=((off%L)+L)%L;
+      const [sr,sc]=cellAt(si);
+      const tr=vertical?src.r1+off:sr, tc=vertical?sc:src.c1+off;
+      if(tr<0||tc<0||tr>=ROWS||tc>=COLS) continue;
+      const sid=idOf(sr,sc), srcRaw=sheet.raw(sid);
+      let raw;
+      if(step) raw=String(+(step.v0+step.d*off).toFixed(10));
+      else if(srcRaw[0]==='=') raw=shiftFormula(srcRaw,tr-sr,tc-sc);
+      else raw=srcRaw;
+      const t=sheet.ensure(idOf(tr,tc)); t.raw=raw; t.s=Object.assign({},sheet.st(sid));
+    }
+  }
+  const R={...src};
+  if(dir==='down') R.r2=src.r2+count; else if(dir==='up') R.r1=src.r1-count;
+  else if(dir==='right') R.c2=src.c2+count; else R.c1=src.c1-count;
+  R.r1=clamp(R.r1,0,ROWS-1); R.r2=clamp(R.r2,0,ROWS-1); R.c1=clamp(R.c1,0,COLS-1); R.c2=clamp(R.c2,0,COLS-1);
+  state.cur={r:R.r1,c:R.c1}; state.ext={r:R.r2,c:R.c2};
+  recalcAll();
+}
+function planFill(src,r,c){
+  const dy=r>src.r2?r-src.r2:(r<src.r1?r-src.r1:0), dx=c>src.c2?c-src.c2:(c<src.c1?c-src.c1:0);
+  if(!dy&&!dx) return null;
+  if(Math.abs(dy)>=Math.abs(dx)) return {dir:dy>0?'down':'up', count:Math.abs(dy)};
+  return {dir:dx>0?'right':'left', count:Math.abs(dx)};
+}
+
+/* ---------- formatare ---------- */
+function fmtSel(fn){
+  if(!ensureCommitted()) return;
+  pushUndo();
+  const R=selRange();
+  for(let r=R.r1;r<=R.r2;r++) for(let c=R.c1;c<=R.c2;c++) fn(sheet.ensure(idOf(r,c)).s);
+  renderAll(); renderSel(); focusGrid();
+}
+function toggleStyle(key){
+  const on=!sheet.st(curId())[key];
+  fmtSel(s=>{ if(on) s[key]=1; else delete s[key]; });
+}
+function setAlign(al){
+  const same=sheet.st(curId()).al===al;
+  fmtSel(s=>{ if(same) delete s.al; else s.al=al; });
+}
+function setDec(delta){
+  if(!ensureCommitted()) return;
+  const id=curId(), s=sheet.st(id);
+  const base=s.dec!=null?s.dec:inferDec(sheet.get(id));
+  const nd=clamp(base+delta,0,9);
+  fmtSel(x=>{ x.dec=nd; });
+}
+function applyBorders(kind){
+  if(!ensureCommitted()) return;
+  pushUndo();
+  const R=selRange();
+  const S=(r,c)=>(r<0||c<0||r>=ROWS||c>=COLS)?null:sheet.ensure(idOf(r,c)).s;
+  for(let r=R.r1;r<=R.r2;r++) for(let c=R.c1;c<=R.c2;c++){
+    const s=S(r,c);
+    if(kind==='all'){ s.t=s.r=s.b=s.l=1; }
+    else if(kind==='outer'){ if(r===R.r1) s.t=1; if(r===R.r2) s.b=1; if(c===R.c1) s.l=1; if(c===R.c2) s.r=1; }
+    else if(kind==='bottom'){ if(r===R.r2) s.b=1; }
+    else if(kind==='top'){ if(r===R.r1) s.t=1; }
+    else if(kind==='none'){
+      delete s.t; delete s.r; delete s.b; delete s.l;
+      let n;
+      if(r===R.r1&&(n=S(r-1,c))) delete n.b;
+      if(r===R.r2&&(n=S(r+1,c))) delete n.t;
+      if(c===R.c1&&(n=S(r,c-1))) delete n.r;
+      if(c===R.c2&&(n=S(r,c+1))) delete n.l;
+    }
+  }
+  renderAll(); renderSel(); focusGrid();
+}
+function autoSum(fn){
+  if(!ensureCommitted()) return;
+  const {r,c}=state.cur; state.ext={r,c};
+  const isNum=(rr,cc)=>rr>=0&&cc>=0&&typeof sheet.get(idOf(rr,cc))==='number';
+  let range=null, q=r-1;
+  while(isNum(q,c)) q--;
+  if(q<r-1) range=(q+1===r-1)?idOf(r-1,c):idOf(q+1,c)+':'+idOf(r-1,c);
+  else {
+    let k=c-1; while(isNum(r,k)) k--;
+    if(k<c-1) range=(k+1===c-1)?idOf(r,c-1):idOf(r,k+1)+':'+idOf(r,c-1);
+  }
+  renderSel();
+  if(range){
+    startEdit('='+fn+'('+range+')','cell','edit');
+    edit.el.setSelectionRange(fn.length+2, fn.length+2+range.length);   // intervalul propus apare selectat, ca în Excel
+  } else { const t='='+fn+'()'; startEdit(t,'cell','edit',t.length-1); }
+}
+
+/* ---------- popover (culori, chenare, Σ) ---------- */
+const pop=$('#pop'); let popAnchor=null;
+const PALETTE=['#FFFFFF','#F2F2F2','#D9D9D9','#808080','#000000','#FFF2CC','#FFE699','#FFFF00','#C6E0B4','#A9D08E','#00B050','#BDD7EE','#9BC2E6','#0070C0','#F8CBAD','#F4B084','#FF0000','#C00000','#D9C3E8','#7030A0','#FFC7CE'];
+function openPop(btn,html,pick){
+  popAnchor=btn; pop.innerHTML=html; pop.style.display='block';
+  const b=btn.getBoundingClientRect();
+  pop.style.left=Math.min(b.left,window.innerWidth-pop.offsetWidth-8)+'px'; pop.style.top=(b.bottom+4)+'px';
+  pop.onclick=e=>{ const it=e.target.closest('[data-v]'); if(!it) return; closePop(); pick(it.dataset.v); };
+}
+function closePop(){ pop.style.display='none'; popAnchor=null; }
+document.addEventListener('mousedown',e=>{ if(pop.style.display==='block' && !pop.contains(e.target) && !(popAnchor&&popAnchor.contains(e.target))) closePop(); });
+function colorPop(btn,kind){
+  let h='<div class="sw-grid">'+PALETTE.map(c=>'<button class="sw" data-v="'+c+'" style="background:'+c+'" title="'+c+'"></button>').join('')+'</div><button class="mi" data-v="none">Fără culoare</button>';
+  openPop(btn,h,v=>{
+    if(v==='none') fmtSel(s=>{ delete s[kind]; });
+    else { if(kind==='fill'){ lastFill=v; $('#fillBar').style.background=v; } else { lastFont=v; $('#fcolorBar').style.background=v; } fmtSel(s=>{ s[kind]=v; }); }
+  });
+}
+
+$('#toolbar').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b||state.finished||!state.started) return;
+  const a=b.dataset.act;
+  if(a==='undo') undo(); else if(a==='redo') redo();
+  else if(a==='copy') doCopy(false); else if(a==='paste') doPaste();
+  else if(a==='bold') toggleStyle('b'); else if(a==='italic') toggleStyle('i');
+  else if(a==='left'||a==='center'||a==='right') setAlign(a);
+  else if(a==='decUp') setDec(1); else if(a==='decDown') setDec(-1);
+  else if(a==='fill') colorPop(b,'fill'); else if(a==='fcolor') colorPop(b,'color');
+  else if(a==='borders') openPop(b,
+    '<button class="mi" data-v="all">Toate chenarele</button><button class="mi" data-v="outer">Chenar exterior</button><button class="mi" data-v="top">Chenar sus</button><button class="mi" data-v="bottom">Chenar jos</button><button class="mi" data-v="none">Fără chenar</button>',
+    applyBorders);
+  else if(a==='autosum') openPop(b,
+    '<button class="mi" data-v="SUM">Sumă</button><button class="mi" data-v="AVERAGE">Medie</button><button class="mi" data-v="MAX">Maxim</button><button class="mi" data-v="MIN">Minim</button>',
+    autoSum);
+  if(a!=='fill'&&a!=='fcolor'&&a!=='borders'&&a!=='autosum') { b.blur(); }
+});
+$('#numFmt').addEventListener('change',e=>{
+  if(state.finished||!state.started) return;
+  const v=e.target.value;
+  fmtSel(s=>{ if(v==='n2') s.dec=2; else delete s.dec; });
+});
+
+/* ---------- mouse ---------- */
+function hoverCell(e){ const el=document.elementFromPoint(e.clientX,e.clientY); return el&&el.closest?el.closest('#grid td'):null; }
+function hoverTh(e,cls){ const el=document.elementFromPoint(e.clientX,e.clientY); const th=el&&el.closest?el.closest('#grid th.'+cls):null; return th; }
+
+table.addEventListener('mousedown',e=>{
+  if(state.finished||!state.started||e.button!==0) return;
+  const rs=e.target.closest('.rs');
+  if(rs){ if(editing && !commitEdit()) return; e.preventDefault(); resizing={c:+rs.dataset.c,x:e.clientX,w:widths[+rs.dataset.c]}; drag='resize'; return; }
+  const td=e.target.closest('td');
+  if(td){
+    const r=+td.dataset.r, c=+td.dataset.c;
+    if(editing){ if(tryPoint(e,r,c)) return; if(!commitEdit()){ e.preventDefault(); return; } }
+    e.preventDefault(); focusGrid();
+    if(e.shiftKey) state.ext={r,c}; else { state.cur={r,c}; state.ext={r,c}; }
+    drag='select'; renderSel(); return;
+  }
+  const th=e.target.closest('th'); if(!th) return;
+  if(editing && !commitEdit()) return;
+  e.preventDefault(); focusGrid();
+  if(th.classList.contains('corner')){ state.cur={r:0,c:0}; state.ext={r:ROWS-1,c:COLS-1}; }
+  else if(th.classList.contains('ch')){ const c=+th.dataset.c; state.cur={r:0,c}; state.ext={r:ROWS-1,c}; drag='cols'; }
+  else { const r=+th.dataset.r; state.cur={r,c:0}; state.ext={r,c:COLS-1}; drag='rows'; }
+  renderSel();
+});
+fillHandle.addEventListener('mousedown',e=>{
+  if(state.finished||editing||e.button!==0) return;
+  e.preventDefault(); e.stopPropagation(); fillSrc=selRange(); fillPlan=null; drag='fill';
+});
+document.addEventListener('mousemove',e=>{
+  if(!drag) return;
+  if(drag==='resize'){ widths[resizing.c]=Math.max(44,resizing.w+e.clientX-resizing.x); applyWidths(); renderSel(); return; }
+  if(drag==='select'){ const td=hoverCell(e); if(td){ const r=+td.dataset.r,c=+td.dataset.c; if(r!==state.ext.r||c!==state.ext.c){ state.ext={r,c}; renderSel(); } } return; }
+  if(drag==='cols'){ const th=hoverTh(e,'ch'); if(th){ state.ext={r:ROWS-1,c:+th.dataset.c}; renderSel(); } return; }
+  if(drag==='rows'){ const th=hoverTh(e,'rh'); if(th){ state.ext={r:+th.dataset.r,c:COLS-1}; renderSel(); } return; }
+  if(drag==='point'){
+    const td=hoverCell(e); if(!td||!edit||!edit.point) return;
+    const r=+td.dataset.r,c=+td.dataset.c, p=edit.point;
+    const ref=(r===p.ar&&c===p.ac)?idOf(r,c):idOf(p.ar,p.ac)+':'+idOf(r,c);
+    const txt=cellEditor.value;
+    setEditText(txt.slice(0,p.start)+ref+txt.slice(p.end), p.start+ref.length);
+    p.end=p.start+ref.length; return;
+  }
+  if(drag==='fill'){
+    const td=hoverCell(e); fillPlan=td?planFill(fillSrc,+td.dataset.r,+td.dataset.c):null;
+    if(fillPlan){
+      const R={...fillSrc}, n=fillPlan.count;
+      if(fillPlan.dir==='down') R.r2=clamp(fillSrc.r2+n,0,ROWS-1); else if(fillPlan.dir==='up') R.r1=clamp(fillSrc.r1-n,0,ROWS-1);
+      else if(fillPlan.dir==='right') R.c2=clamp(fillSrc.c2+n,0,COLS-1); else R.c1=clamp(fillSrc.c1-n,0,COLS-1);
+      fillBox.hidden=false; placeBox(fillBox,R);
+    } else fillBox.hidden=true;
+  }
+});
+document.addEventListener('mouseup',()=>{
+  if(!drag) return;
+  const d=drag; drag=null;
+  if(d==='fill'){ fillBox.hidden=true; if(fillPlan&&fillPlan.count>0) applyFill(fillSrc,fillPlan.dir,fillPlan.count); fillPlan=null; focusGrid(); }
+  else if(d==='point'){ if(edit) edit.el.focus({preventScroll:true}); }
+  else if(d==='resize'){ focusGrid(); }
+});
+table.addEventListener('dblclick',e=>{
+  if(state.finished||!state.started) return;
+  const rs=e.target.closest('.rs');
+  if(rs){
+    const c=+rs.dataset.c; let w=measureText(colName(c),false);
+    for(let r=0;r<ROWS;r++){ const id=idOf(r,c); w=Math.max(w,measureText(sheet.display(id),!!sheet.st(id).b)); }
+    widths[c]=Math.ceil(w)+16; applyWidths(); renderSel(); return;
+  }
+  const td=e.target.closest('td');
+  if(td && !editing) startEdit(sheet.raw(curId()),'cell','edit');
+});
+gridScroll.addEventListener('mousedown',e=>{ if(e.target===gridScroll||e.target.id==='gridInner'){ if(!editing) focusGrid(); } });
+window.addEventListener('resize',()=>{ if(state.started) renderSel(); });
+
+/* ---------- panoul de cerințe ---------- */
+function statusClass(got,max){ const p=max?got/max:0; return p>=0.999?'ok':(p>=0.5?'mid':'bad'); }
+function renderTasks(){
+  $('#tasks').innerHTML=TASKS.map((t,i)=>
+    '<article class="task" id="task-'+t.id+'"><header><span class="num">'+(i+1)+'</span><h3>'+esc(t.title)+'</h3><span class="pts">'+t.max+' p</span></header>'+
+    '<div class="desc">'+t.desc+'</div>'+
+    (CONFIG.SHOW_FEEDBACK?'<div class="foot"><button class="btn small primary" data-check="'+t.id+'">Verifică</button><span class="status" id="st-'+t.id+'">Neverificat</span></div><ul class="crit" id="cr-'+t.id+'"></ul>':'')+
+    '</article>').join('');
+  updateSum();
+}
+function critHTML(c){
+  const cls=c.full?'ok':(c.got>0?'mid':'bad'), ic=c.full?'✓':(c.got>0?'◐':'✗');
+  return '<li><span class="ic '+cls+'">'+ic+'</span><span class="tx">'+esc(c.label)+(c.note?'<div class="note">'+esc(c.note)+'</div>':'')+'</span><span class="pp">'+fmtN(c.got)+'/'+c.pts+'</span></li>';
+}
+function showTaskResult(t,res){
+  const st=$('#st-'+t.id); st.textContent=fmtN(res.got)+' / '+t.max+' p'; st.className='status '+statusClass(res.got,t.max);
+  $('#cr-'+t.id).innerHTML=res.cr.map(critHTML).join('');
+  document.querySelector('[data-check="'+t.id+'"]').textContent='Verifică din nou';
+}
+function updateSum(){
+  const box=$('#sumBox');
+  if(!CONFIG.SHOW_FEEDBACK){ box.hidden=true; return; }
+  const ids=Object.keys(lastRes);
+  if(!ids.length){ box.textContent='Nicio cerință verificată încă'; return; }
+  const got=ids.reduce((a,k)=>a+lastRes[k].got,0), mx=ids.reduce((a,k)=>a+TASKS.find(t=>t.id===k).max,0);
+  box.innerHTML='Verificat: <b>'+fmtN(got)+' / '+mx+' p</b><br>'+ids.length+' din '+TASKS.length+' cerințe';
+}
+$('#tasks').addEventListener('click',e=>{
+  const b=e.target.closest('[data-check]'); if(!b||state.finished||!state.started) return;
+  if(!ensureCommitted()) return;
+  const t=TASKS.find(x=>x.id===b.dataset.check), cr=t.grade(sheet);
+  lastRes[t.id]={got:r2(cr.reduce((a,c)=>a+c.got,0)), cr};
+  attempts[t.id]=(attempts[t.id]||0)+1;
+  showTaskResult(t,lastRes[t.id]); updateSum();
+});
+
+/* ---------- modale, start, timp, finalizare ---------- */
+const modal=$('#modal'), modalBox=$('#modalBox');
+function showModal(html){ modalBox.innerHTML=html; modal.hidden=false; }
+function closeModal(){ modal.hidden=true; modalBox.innerHTML=''; }
+
+function showStart(){
+  showModal(
+    '<h2>'+esc(CONFIG.TITLE)+'</h2><p class="sub">Test practic de calcul tabelar – tabel, formatare și funcții</p>'+
+    '<label for="inName">Nume și prenume</label><input id="inName" autocomplete="off" placeholder="ex. Popescu Maria">'+
+    '<label for="inClass">Clasa</label><input id="inClass" autocomplete="off" placeholder="ex. a IX-a B">'+
+    '<ul class="info"><li>Lucrezi într-o foaie de calcul asemănătoare cu Excel, cu 5 cerințe.</li>'+
+    '<li>Punctaj: 90 de puncte pentru cerințe + 10 din oficiu = nota maximă 10.</li>'+
+    (CONFIG.TIME_LIMIT_MIN>0?'<li>Timp de lucru: <b>'+CONFIG.TIME_LIMIT_MIN+' minute</b>. Testul se finalizează automat când timpul expiră.</li>':'')+
+    (CONFIG.SHOW_FEEDBACK?'<li>Poți apăsa <b>Verifică</b> la fiecare cerință pentru a vedea ce este corect și ce mai trebuie îndreptat.</li>':'<li>Rezultatul va fi afișat după ce finalizezi testul.</li>')+
+    '</ul><div class="err" id="stErr"></div>'+
+    '<div class="actions"><button class="btn primary" id="btnStart">Începe testul</button></div>');
+  const go=()=>{
+    const name=$('#inName').value.trim();
+    if(name.length<3){ $('#stErr').textContent='Scrie numele și prenumele tău.'; $('#inName').focus(); return; }
+    state.info={name,cls:$('#inClass').value.trim()};
+    closeModal(); startTest();
+  };
+  $('#btnStart').onclick=go;
+  modalBox.addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
+  setTimeout(()=>$('#inName').focus(),30);
+}
+function startTest(){
+  state.started=true; startTs=Date.now();
+  $('#chipName').hidden=false; $('#chipName').textContent=state.info.name+(state.info.cls?' · '+state.info.cls:'');
+  $('#chipTimer').hidden=false; $('#btnFinish').disabled=false;
+  tick(); timerId=setInterval(tick,1000);
+  renderSel(); focusGrid();
+}
+function tick(){
+  const el=(Date.now()-startTs)/1000, lim=CONFIG.TIME_LIMIT_MIN*60;
+  if(lim>0){
+    const rem=lim-el; $('#timerTxt').textContent=fmtTime(rem)+' rămase';
+    $('#chipTimer').classList.toggle('warn',rem<=300);
+    if(rem<=0) finish('timeout');
+  } else $('#timerTxt').textContent=fmtTime(el);
+}
+$('#btnFinish').addEventListener('click',()=>{
+  if(!state.started||state.finished) return;
+  if(!ensureCommitted()) return;
+  showModal('<h2>Finalizezi testul?</h2><p class="sub">După finalizare nu mai poți modifica foaia de calcul, iar rezultatul va fi afișat.</p>'+
+    '<div class="actions"><button class="btn" id="mCancel">Mai lucrez</button><button class="btn primary" id="mOk">Da, finalizează</button></div>');
+  $('#mCancel').onclick=()=>{ closeModal(); focusGrid(); };
+  $('#mOk').onclick=()=>{ closeModal(); finish('manual'); };
+});
+function finish(reason){
+  if(state.finished) return;
+  if(editing && !commitEdit()) cancelEdit();
+  state.finished=true; clearInterval(timerId);
+  const elapsed=(Date.now()-startTs)/1000;
+  state.result=evaluateAll(sheet);
+  state.info.elapsed=elapsed; state.info.reason=reason; state.info.date=new Date().toLocaleString('ro-RO',{dateStyle:'short',timeStyle:'short'});
+  cellEditor.blur(); fillHandle.hidden=true;
+  $('#btnFinish').textContent='Vezi rezultatul'; $('#btnFinish').disabled=false;
+  $('#btnFinish').onclick=showResults;
+  document.querySelectorAll('[data-check]').forEach(b=>b.disabled=true);
+  showResults();
+}
+function resultsHTML(res){
+  const i=state.info;
+  let h='<h2>Rezultat – test Excel</h2><p class="meta"><b>'+esc(i.name)+'</b>'+(i.cls?' · clasa '+esc(i.cls):'')+' · '+esc(i.date)+' · durată '+fmtTime(i.elapsed)+(i.reason==='timeout'?' (timpul a expirat)':'')+'</p>';
+  h+='<div class="scorecard"><div class="grade">'+fmtN(res.grade)+'</div><div><b>Nota</b><br><span class="meta">'+fmtN(res.total)+' / 100 puncte</span></div></div>';
+  h+='<table class="rt"><tr><td>Din oficiu</td><td>'+OFICIU+' / '+OFICIU+'</td></tr>';
+  for(const t of res.tasks){
+    h+='<tr class="th"><td>'+esc(t.title)+'</td><td>'+fmtN(t.got)+' / '+t.max+'</td></tr>';
+    for(const c of t.criteria){
+      const cls=c.full?'ok':(c.got>0?'mid':'bad'), ic=c.full?'✓':(c.got>0?'◐':'✗');
+      h+='<tr class="cr"><td><span class="ic '+cls+'">'+ic+'</span>'+esc(c.label)+(c.note?'<div class="note">'+esc(c.note)+'</div>':'')+'</td><td>'+fmtN(c.got)+' / '+c.pts+'</td></tr>';
+    }
+  }
+  return h+'</table>';
+}
+function reportText(res){
+  const i=state.info, L=[];
+  L.push('REZULTAT TEST EXCEL – '+CONFIG.TITLE);
+  L.push('Elev: '+i.name+(i.cls?' | Clasa: '+i.cls:'')+' | Data: '+i.date+' | Durată: '+fmtTime(i.elapsed)+(i.reason==='timeout'?' (timp expirat)':''));
+  L.push('NOTA: '+fmtN(res.grade)+'  ('+fmtN(res.total)+' / 100 puncte; din oficiu '+OFICIU+')','');
+  for(const t of res.tasks){
+    L.push(t.title+': '+fmtN(t.got)+' / '+t.max+(attempts[t.id]?'  [verificări: '+attempts[t.id]+']':''));
+    for(const c of t.criteria) L.push('  '+(c.full?'[+]':(c.got>0?'[~]':'[-]'))+' '+c.label+' ('+fmtN(c.got)+'/'+c.pts+')'+(c.note?' – '+c.note:''));
+    L.push('');
+  }
+  L.push('Conținutul foii (valori afișate):');
+  for(let r=0;r<12;r++){ const row=[]; for(let c=0;c<8;c++) row.push(sheet.display(idOf(r,c))); if(row.some(x=>x)) L.push('  '+row.join(' | ')); }
+  return L.join('\r\n');
+}
+function showResults(){
+  const res=state.result;
+  showModal(resultsHTML(res)+'<div class="actions"><button class="btn" id="rDown">Descarcă (.txt)</button><button class="btn" id="rPrint">Tipărește / PDF</button><button class="btn primary" id="rClose">Închide</button></div>');
+  $('#rClose').onclick=closeModal;
+  $('#rPrint').onclick=()=>{ $('#printArea').innerHTML=resultsHTML(res); try{ window.print(); }catch(e){ toast('Tipărirea nu este disponibilă în acest context.'); } };
+  $('#rDown').onclick=()=>{
+    try{
+      const blob=new Blob(['\ufeff'+reportText(res)],{type:'text/plain;charset=utf-8'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download='rezultat-excel-'+state.info.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-')+'.txt';
+      document.body.appendChild(a); a.click(); a.remove();
+    }catch(e){ toast('Descărcarea nu este permisă în acest context.'); }
+  };
+}
+window.addEventListener('beforeunload',e=>{ if(state.started&&!state.finished){ e.preventDefault(); e.returnValue=''; } });
+
+/* ---------- inițializare ---------- */
+(function init(){
+  $('#ttl').textContent=CONFIG.TITLE; document.title=CONFIG.TITLE;
+  if(!CONFIG.ALLOW_AUTOSUM) $('#bAutosum').hidden=true;
+  buildGrid(); renderTasks(); renderAll(); renderSel();
+  showStart();
+})();
+</script>
+</body>
+</html>
