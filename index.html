@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Test Excel – Medii și absențe</title>
+<title>Test Excel – Activități practice la profil mecanic</title>
 <style>
 :root{
   --green:#217346; --green-d:#185c37; --green-l:#e6f2ea;
@@ -87,6 +87,13 @@ button{font:inherit;color:inherit}
 .task .pts{font-size:12px;color:var(--muted);background:#f1f3f4;border-radius:999px;padding:1px 9px;white-space:nowrap}
 .task .desc{color:#2f353b;font-size:13.5px}
 .task .desc ul{margin:5px 0 0;padding-left:18px}
+.task .desc .dataset{width:100%;border-collapse:collapse;table-layout:fixed;margin:8px 0;font-size:11.5px;line-height:1.3}
+.task .desc .dataset th,.task .desc .dataset td{border:1px solid #d7dbe0;padding:4px 3px;text-align:left;white-space:normal;overflow-wrap:anywhere}
+.task .desc .dataset th{background:#eef3f0;font-weight:700}
+.task .desc .dataset th:first-child,.task .desc .dataset td:first-child{width:9%;text-align:center}
+.task .desc .dataset th:nth-child(2){width:38%}
+.task .desc .dataset th:nth-child(3),.task .desc .dataset th:nth-child(4){width:26.5%}
+.task .desc small{display:block;color:#5f6670;font-size:11.5px;line-height:1.4;margin-top:4px}
 .task .foot{display:flex;align-items:center;gap:10px;margin-top:10px}
 .status{font-size:12.5px;font-weight:600;color:var(--muted)}
 .status.ok{color:var(--ok)} .status.mid{color:var(--warn)} .status.bad{color:var(--bad)}
@@ -241,7 +248,7 @@ table.rt .ic{display:inline-block;width:16px;font-weight:700}
 <!-- ======================= SETĂRI PENTRU PROFESOR ======================= -->
 <script id="config">
 const CONFIG = {
-  TITLE: 'Test Excel – Medii și absențe',
+  TITLE: 'Test Excel – Activități practice la profil mecanic',
   TIME_LIMIT_MIN: 15,     // minute; 0 = fără limită de timp
   SHOW_FEEDBACK: true,    // true = butonul „Verifică” la fiecare cerință; false = nota apare doar la final (mod test)
   ALLOW_AUTOSUM: true     // false = ascunde butonul Σ (Însumare automată)
@@ -536,8 +543,15 @@ function crit(label, pts, ok, total, note){
 }
 const listBad = (arr, pre) => arr.length ? (pre||'Verifică: ')+arr.join(', ') : '';
 
-const EXPECTED_HEADERS=['Nr. crt.','Numele și prenumele','Media 1','Media 2','Media anuală','Absențe 1','Absențe 2','Total absențe'];
+const EXPECTED_HEADERS=['Nr. crt.','Numele și prenumele','Desen tehnic','Măsurare cu șublerul','Media practică','Ore practică S1','Ore practică S2','Total ore practică'];
 const HEADER_ALT={1:['numeprenume','numesiprenume']};
+const EXPECTED_STUDENTS=[
+  {name:'Andrei Popescu', desen:9, subler:8, ore1:54, ore2:60},
+  {name:'Mihai Ionescu', desen:7, subler:8, ore1:48, ore2:54},
+  {name:'David Marin', desen:10, subler:9, ore1:60, ore2:60},
+  {name:'Ștefan Radu', desen:6, subler:7, ore1:42, ore2:48},
+  {name:'Alexandru Dumitru', desen:8, subler:9, ore1:54, ore2:60}
+];
 
 function gradeT1(sh){
   const cr=[];
@@ -546,33 +560,38 @@ function gradeT1(sh){
     const id=idOf(0,c), got=norm(sh.raw(id));
     ([norm(h)].concat(HEADER_ALT[c]||[])).includes(got) ? ok++ : bad.push(id);
   });
-  cr.push(crit('Antetul din rândul 1 (A1:H1) are cele 8 coloane cerute, în ordine', 6, ok, 8, listBad(bad)));
+  cr.push(crit('Antetul din rândul 1 (A1:H1) conține cele 8 coloane despre activitatea practică, în ordine', 6, ok, 8, listBad(bad)));
 
   ok=0; bad=[];
   for(let k=1;k<=5;k++){
-    const id=idOf(k,1), v=sh.get(id);
-    const words=typeof v==='string'?v.trim().split(/\s+/).filter(w=>w.length>=2):[];
-    (words.length>=2 && parseNumeric(v)===null) ? ok++ : bad.push(id);
+    const id=idOf(k,1), v=sh.get(id), expected=EXPECTED_STUDENTS[k-1].name;
+    (typeof v==='string' && norm(v)===norm(expected) && sh.raw(id)[0]!=='=') ? ok++ : bad.push(id);
   }
-  cr.push(crit('Numele și prenumele a 5 elevi (B2:B6)', 4, ok, 5, listBad(bad,'Lipsesc / incomplete: ')));
+  cr.push(crit('Numele celor 5 elevi sunt introduse conform tabelului de date (B2:B6)', 4, ok, 5, listBad(bad,'Nume incorecte sau lipsă: ')));
 
   ok=0; bad=[];
   for(let k=1;k<=5;k++){ const id=idOf(k,0); sh.get(id)===k ? ok++ : bad.push(id); }
   cr.push(crit('Numerotare 1–5 în coloana Nr. crt. (A2:A6)', 2, ok, 5, listBad(bad)));
 
   ok=0; bad=[];
-  for(let k=1;k<=5;k++) for(const c of [2,3]){
-    const id=idOf(k,c), v=sh.get(id);
-    (typeof v==='number' && v>=1 && v<=10 && sh.raw(id)[0]!=='=') ? ok++ : bad.push(id);
+  for(let k=1;k<=5;k++){
+    const row=EXPECTED_STUDENTS[k-1];
+    for(const [c,key] of [[2,'desen'],[3,'subler']]){
+      const id=idOf(k,c), v=sh.get(id);
+      (typeof v==='number' && v===row[key] && sh.raw(id)[0]!=='=') ? ok++ : bad.push(id);
+    }
   }
-  cr.push(crit('Media 1 și Media 2: numere între 1 și 10 (C2:D6)', 4, ok, 10, listBad(bad,'Lipsesc / nu sunt note valide: ')));
+  cr.push(crit('Notele la Desen tehnic și Măsurare cu șublerul sunt introduse corect (C2:D6)', 4, ok, 10, listBad(bad,'Note incorecte sau lipsă: ')));
 
   ok=0; bad=[];
-  for(let k=1;k<=5;k++) for(const c of [5,6]){
-    const id=idOf(k,c), v=sh.get(id);
-    (typeof v==='number' && Number.isInteger(v) && v>=0 && sh.raw(id)[0]!=='=') ? ok++ : bad.push(id);
+  for(let k=1;k<=5;k++){
+    const row=EXPECTED_STUDENTS[k-1];
+    for(const [c,key] of [[5,'ore1'],[6,'ore2']]){
+      const id=idOf(k,c), v=sh.get(id);
+      (typeof v==='number' && Number.isInteger(v) && v===row[key] && sh.raw(id)[0]!=='=') ? ok++ : bad.push(id);
+    }
   }
-  cr.push(crit('Absențe 1 și Absențe 2: numere întregi ≥ 0 (F2:G6)', 4, ok, 10, listBad(bad,'Lipsesc / nu sunt valide: ')));
+  cr.push(crit('Orele de instruire practică din semestrele I și II sunt introduse corect (F2:G6)', 4, ok, 10, listBad(bad,'Valori incorecte sau lipsă: ')));
   return cr;
 }
 
@@ -597,7 +616,7 @@ function gradeT2(sh){
 
   ok=0; bad=[];
   for(let k=1;k<=5;k++){ const id=idOf(k,4); sh.st(id).dec===2 ? ok++ : bad.push(id); }
-  cr.push(crit('Media anuală (E2:E6) afișată cu 2 zecimale', 4, ok, 5, listBad(bad,'Altă formatare: ')));
+  cr.push(crit('Media practică (E2:E6) afișată cu 2 zecimale', 4, ok, 5, listBad(bad,'Altă formatare: ')));
   return cr;
 }
 
@@ -624,12 +643,12 @@ function gradeRowFn(sh, fn, outCol, srcCols, pts, labels, expFn, srcName){
 }
 function gradeT3(sh){
   return gradeRowFn(sh,'AVERAGE',4,[2,3],[7,6,7],
-    ['Se folosește funcția AVERAGE în E2:E6','Argumentele sunt Media 1 și Media 2 ale aceluiași elev (ex. C2:D2 pe rândul 2)','Rezultatele sunt corecte'],
+    ['Se folosește funcția AVERAGE în E2:E6','Argumentele sunt notele la Desen tehnic și Măsurare cu șublerul ale aceluiași elev (ex. C2:D2 pe rândul 2)','Mediile practice calculate sunt corecte'],
     v=>v.reduce((a,b)=>a+b,0)/v.length);
 }
 function gradeT4(sh){
   return gradeRowFn(sh,'SUM',7,[5,6],[5,5,5],
-    ['Se folosește funcția SUM în H2:H6','Argumentele sunt Absențe 1 și Absențe 2 ale aceluiași elev (ex. F2:G2 pe rândul 2)','Rezultatele sunt corecte'],
+    ['Se folosește funcția SUM în H2:H6','Argumentele sunt orele de practică din semestrele I și II ale aceluiași elev (ex. F2:G2 pe rândul 2)','Totalurile orelor de practică sunt corecte'],
     v=>v.reduce((a,b)=>a+b,0));
 }
 function gradeAgg(sh, fn, id, label, expFn){
@@ -641,7 +660,7 @@ function gradeAgg(sh, fn, id, label, expFn){
   const tol=(ast && findCalls(ast,'ROUND').length)?0.0051:1e-9;
   return [
     crit(id+': se folosește funcția '+fn, 2, calls.length?1:0, 1, calls.length?'':(raw?'Celula nu conține formula cu '+fn+'.':'Celula este goală.')),
-    crit(id+': '+fn+' se aplică pe intervalul E2:E6 (Media anuală)', 2, calls.some(cl=>sameSet(refsIn(cl),want))?1:0, 1, ''),
+    crit(id+': '+fn+' se aplică pe intervalul E2:E6 (Media practică)', 2, calls.some(cl=>sameSet(refsIn(cl),want))?1:0, 1, ''),
     crit(id+': valoarea '+label+' este corectă', 2, (typeof out==='number'&&exp!==null&&Math.abs(out-exp)<=tol)?1:0, 1, '')
   ];
 }
@@ -651,23 +670,30 @@ function gradeT5(sh){
     gradeAgg(sh,'MAX','E9','maxima',v=>Math.max(...v))
   );
   let ok=0;
-  if(norm(sh.raw('B8')).includes('min')) ok++;
-  if(norm(sh.raw('B9')).includes('max')) ok++;
-  cr.push(crit('Etichetele „Media minima” în B8 și „Media maxima” în B9', 3, ok, 2, ok<2?'Scrie etichetele în B8 și B9.':''));
+  if(norm(sh.raw('B8')).includes('mediapracticaminima')) ok++;
+  if(norm(sh.raw('B9')).includes('mediapracticamaxima')) ok++;
+  cr.push(crit('Etichetele „Media practică minimă” în B8 și „Media practică maximă” în B9', 3, ok, 2, ok<2?'Scrie etichetele complete în B8 și B9.':''));
   return cr;
 }
 
 const TASKS=[
- {id:'t1', title:'Introducerea datelor', max:20, grade:gradeT1,
-  desc:'Începând din <b>A1</b>, scrie pe rândul 1 antetul cu coloanele: <i>Nr. crt., Numele și prenumele, Media 1, Media 2, Media anuală, Absențe 1, Absențe 2, Total absențe</i>.<br>Pe rândurile 2–6 introdu datele a <b>5 elevi</b>: numerotarea 1–5, numele și prenumele, două medii (între 1 și 10) și absențele din cele două semestre (numere întregi). Coloanele <i>Media anuală</i> și <i>Total absențe</i> le completezi la cerințele următoare.'},
+ {id:'t1', title:'Introducerea datelor despre activitatea practică', max:20, grade:gradeT1,
+  desc:'Realizezi registrul rezultatelor obținute de 5 elevi de la profilul mecanic la atelier. Începând din <b>A1</b>, introdu exact antetul: <i>Nr. crt., Numele și prenumele, Desen tehnic, Măsurare cu șublerul, Media practică, Ore practică S1, Ore practică S2, Total ore practică</i>.<br>Completează rândurile 2–6 cu datele de mai jos. Notele sunt pentru competențele de citire a desenului tehnic și măsurare a pieselor cu șublerul. Orele reprezintă instruirea practică desfășurată în atelier.'+
+  '<table class="dataset"><thead><tr><th>Nr.</th><th>Elev</th><th>Desen / șubler</th><th>Ore S1 / S2</th></tr></thead><tbody>'+
+  '<tr><td>1</td><td>Andrei Popescu</td><td>9 / 8</td><td>54 / 60</td></tr>'+
+  '<tr><td>2</td><td>Mihai Ionescu</td><td>7 / 8</td><td>48 / 54</td></tr>'+
+  '<tr><td>3</td><td>David Marin</td><td>10 / 9</td><td>60 / 60</td></tr>'+
+  '<tr><td>4</td><td>Ștefan Radu</td><td>6 / 7</td><td>42 / 48</td></tr>'+
+  '<tr><td>5</td><td>Alexandru Dumitru</td><td>8 / 9</td><td>54 / 60</td></tr>'+
+  '</tbody></table><small>În coloana C introduci nota la desen tehnic, în D nota la măsurare cu șublerul, în F orele din semestrul I, iar în G orele din semestrul II. Coloanele E și H se calculează la cerințele următoare.</small>'},
  {id:'t2', title:'Formatarea tabelului', max:20, grade:gradeT2,
-  desc:'Formatează tabelul:<ul><li>antetul <b>A1:H1</b>: text aldin, centrat și cu culoare de fundal;</li><li>întregul tabel <b>A1:H6</b>: chenar la toate celulele;</li><li>coloana <i>Media anuală</i> (<b>E2:E6</b>): afișare cu 2 zecimale.</li></ul>'},
- {id:'t3', title:'Media anuală – funcția AVERAGE', max:20, grade:gradeT3,
-  desc:'În <b>E2:E6</b> calculează <b>media anuală</b> a fiecărui elev, folosind funcția <b>AVERAGE</b> pe Media 1 și Media 2.'},
- {id:'t4', title:'Total absențe – funcția SUM', max:15, grade:gradeT4,
-  desc:'În <b>H2:H6</b> calculează <b>totalul absențelor</b> fiecărui elev, folosind funcția <b>SUM</b> pe Absențe 1 și Absențe 2.'},
- {id:'t5', title:'Media minimă și maximă – MIN și MAX', max:15, grade:gradeT5,
-  desc:'Sub tabel:<ul><li>în <b>B8</b> scrie <i>Media minima</i>, iar în <b>E8</b> determină cu <b>MIN</b> cea mai mică medie anuală;</li><li>în <b>B9</b> scrie <i>Media maxima</i>, iar în <b>E9</b> determină cu <b>MAX</b> cea mai mare medie anuală.</li></ul>'}
+  desc:'Formatează registrul de activități practice:<ul><li>antetul <b>A1:H1</b>: text aldin, centrat și cu o culoare de fundal;</li><li>întregul tabel <b>A1:H6</b>: aplică chenar tuturor celulelor;</li><li>coloana <i>Media practică</i> (<b>E2:E6</b>): afișare cu 2 zecimale.</li></ul>'},
+ {id:'t3', title:'Media practică – funcția AVERAGE', max:20, grade:gradeT3,
+  desc:'În <b>E2:E6</b> calculează media fiecărui elev la cele două competențe practice, folosind funcția <b>AVERAGE</b> pentru notele de la Desen tehnic și Măsurare cu șublerul (coloanele C și D).'},
+ {id:'t4', title:'Total ore de practică – funcția SUM', max:15, grade:gradeT4,
+  desc:'În <b>H2:H6</b> calculează numărul total de ore de instruire practică efectuate de fiecare elev în cele două semestre, folosind funcția <b>SUM</b> pentru valorile din F și G.'},
+ {id:'t5', title:'Media practică minimă și maximă – MIN și MAX', max:15, grade:gradeT5,
+  desc:'Sub tabel, determină rezultatele la nivelul clasei:<ul><li>în <b>B8</b> scrie <i>Media practică minimă</i>, iar în <b>E8</b> folosește funcția <b>MIN</b> pentru a afla cea mai mică medie din E2:E6;</li><li>în <b>B9</b> scrie <i>Media practică maximă</i>, iar în <b>E9</b> folosește funcția <b>MAX</b> pentru a afla cea mai mare medie din E2:E6.</li></ul>'}
 ];
 
 function evaluateAll(sh){
@@ -689,7 +715,7 @@ const sheet=new Sheet();
 const tds=[];
 const state={cur:{r:0,c:0}, ext:{r:0,c:0}, started:false, finished:false, info:null, result:null};
 let editing=false, edit=null, drag=null, clip=null, fillSrc=null, fillPlan=null, resizing=null;
-const widths=[76,214,112,112,120,114,114,120,100,100];
+const widths=[72,190,165,185,145,150,150,155,100,100];
 const undoStack=[], redoStack=[];
 const lastRes={}, attempts={};
 let lastFill='#FFE699', lastFont='#C00000', timerId=null, startTs=0;
@@ -1248,7 +1274,7 @@ function closeModal(){ modal.hidden=true; modalBox.innerHTML=''; }
 
 function showStart(){
   showModal(
-    '<h2>'+esc(CONFIG.TITLE)+'</h2><p class="sub">Test practic de calcul tabelar – tabel, formatare și funcții</p>'+
+    '<h2>'+esc(CONFIG.TITLE)+'</h2><p class="sub">Evidența rezultatelor la activități practice în atelierul mecanic – tabel, formatare și funcții</p>'+
     '<label for="inName">Nume și prenume</label><input id="inName" autocomplete="off" placeholder="ex. Popescu Maria">'+
     '<label for="inClass">Clasa</label><input id="inClass" autocomplete="off" placeholder="ex. a IX-a B">'+
     '<ul class="info"><li>Lucrezi într-o foaie de calcul asemănătoare cu Excel, cu 5 cerințe.</li>'+
